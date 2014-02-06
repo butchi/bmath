@@ -1,4 +1,4 @@
 bmath
 =====
 
-fathematical function utility
+Mathematical function utility
