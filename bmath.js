@@ -12,6 +12,9 @@ function arrayQ(arr) {
 	return true;
 }
 
+function sameQ() {
+}
+
 function first(arr) {
 	return arr[0];
 }
@@ -21,9 +24,11 @@ function last(arr) {
 }
 
 function rest(arr) {
+	return arr.slice(1);
 }
 
 function most(arr) {
+	return 	arr.slice(0,arr.length-1);
 }
 
 function take() {
@@ -104,7 +109,38 @@ function flatten() {
 function join() {
 }
 
-function union() {
+/*
+ * リスト list を一連の同一要素からなるサブリストに分割する．
+ */
+function split() {
+}
+
+/**
+ * from http://code.jquery.com/jquery-1.8.2.js Sizzle.uniqueSort
+ */
+function union(results) {
+	var elem,
+		i = 1;
+	
+	//hasDuplicate = baseHasDuplicate;
+	//results.sort( sortOrder );
+	results.sort( function(a,b) {return a-b} );
+	
+	//if ( hasDuplicate ) {
+		for ( ; (elem = results[i]); i++ ) {
+			if ( elem === results[ i - 1 ] ) {
+				results.splice( i--, 1 );
+			}
+		}
+	//}
+	
+	return results;
+}
+
+/*
+ * Mathematica: list を重複しない長さ n のサブリストに分割する．
+ */
+function partition(arr, n) {
 }
 
 function replacePart() {
