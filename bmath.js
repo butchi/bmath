@@ -146,19 +146,46 @@ function partition(arr, n) {
 function replacePart() {
 }
 
-function total() {
+function total(arr) {
+	// 数値の配列という前提
+	var i;
+	var len = arr.length;
+	var ret = 0;
+	for(i=0; i<len; i++) {
+		ret += arr[i]
+	}
+	return ret;
 }
 
-function accumulate() {
+function accumulate(arr) {
+	// 数値の配列という前提
+	var i;
+	var len = arr.length;
+	var ret = new Array(len);
+	ret[0] = arr[0];
+	for(i=1; i<len; i++) {
+		ret[i] = ret[i-1] + arr[i];
+	}
+	return ret;
 }
 
-function differences() {
+function differences(arr) {
+	// 数値の配列という前提
+	var i;
+	var len = arr.length;
+	var ret = new Array(len-1);
+	for(i=0; i<len-1; i++) {
+		ret[i] = arr[i+1] - arr[i];
+	}
+	return ret;
 }
 
-function max_() {
+function max_(ret) {
+	// 数値の配列という前提
 }
 
 function min_() {
+	// 数値の配列という前提
 }
 
 function sort_() {
