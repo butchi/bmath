@@ -1,5 +1,5 @@
 (function() {
-  "use strict";
+  'use strict';
   window.bMath = window.bMath || {};
   /* 
    * 現在2次元配列を想定
@@ -292,7 +292,7 @@
   */
 
   bMath.padRight = function(arr, n, c) {
-    if(typeof c == "undefined") {
+    if(typeof c == 'undefined') {
       c = 0;
     }
     if(n>=arr.length) {
@@ -303,7 +303,7 @@
   }
 
   bMath.padLeft = function(arr, n, c) {
-    if(typeof c == "undefined") {
+    if(typeof c == 'undefined') {
       c = 0;
     }
     if(n>=arr.length) {
@@ -314,7 +314,7 @@
   }
 
   bMath.rotateRight = function(arr, n) {
-    if(typeof n == "undefined") {
+    if(typeof n == 'undefined') {
       n = 1;
     }
     if(n<0) {
@@ -325,7 +325,7 @@
   }
 
   bMath.rotateLeft = function(arr, n) {
-    if(typeof n == "undefined") {
+    if(typeof n == 'undefined') {
       n = 1;
     }
     if(n<0) {
