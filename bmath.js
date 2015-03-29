@@ -216,9 +216,60 @@
   }
 
   /*
-  bMath.arrayFlatten = function() {
-  }
-  */
+   *  内部配列の最大サイズを元に平坦配列を構成
+   */
+  // Example: 
+  // bMath.arrayFlatten(
+  //   [
+  //     [
+  //       [
+  //         [1,2,3],[4,5,6]
+  //       ],[
+  //         [7,8,9],[10,11,12]
+  //       ]
+  //     ],
+  //     [
+  //       [
+  //         [13,14,15],[16,17,18]
+  //       ],[
+  //         [19,20,21],[22,23,24]
+  //       ]
+  //     ]
+  //   ]
+  // );
+  bMath.arrayFlatten = function(arr) {
+    var x, y, d, tableD, tableW, tableH, cellWMax, cellHMax, w, h, flattenArr, ret;
+
+    tableD = bMath.dimensions(arr);
+    tableW = tableD[0];
+    tableH = tableD[1];
+    cellWMax = 0;
+    cellHMax = 0;
+    if(bMath.arrayQ(arr)) {
+      // 内部配列の最大次元を求める
+      for(y = 0; y < arr.length; y++) {
+        for(x = 0; x < arr[y].length; x++) {
+          d = bMath.dimensions(arr[y][x]);
+          cellWMax = Math.max(cellWMax, d[0]);
+          cellHMax = Math.max(cellHMax, d[1]);
+        }
+      }
+
+      w = tableW * cellWMax;
+      h = tableH * cellHMax;
+
+      flattenArr = bMath.constantArray(undefined, [w, h]);
+
+      for(y = 0; y < h; y++) {
+        for(x = 0; x < w; x++) {
+          flattenArr[y][x] = arr[Math.floor(y / cellHMax)][Math.floor(x / cellWMax)][y % cellHMax][x % cellWMax];
+        }
+      }
+
+      ret = flattenArr;
+      return ret;
+    }
+  };
 
   bMath.join = function(arr1, arr2) {
     return [].concat.apply([], arguments);
