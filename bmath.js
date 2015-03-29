@@ -76,13 +76,33 @@
 
 
   bMath.constantArray = function(c, len) {
-    var retArr = new Array(len);
-    var i;
-    for(i=0; i<len; i++) {
-      retArr[i] = c;
+    var i,
+        d,
+        lenArr,
+        lastLen,
+        retArr;
+
+    if(typeof len === 'number') {
+      retArr = new Array(len);
+      for(i = 0; i < len; i++) {
+        retArr[i] = c;
+      }
+      return retArr;
+    } else if(len instanceof Array) {
+      lenArr = len;
+      lastLen = lenArr.pop();
+      retArr = new Array(lastLen);
+      if(lenArr.length === 0) {
+        retArr = bMath.constantArray(c, lastLen);
+      } else {
+        for(i = 0; i < lastLen; i++) {
+          retArr[i] = bMath.constantArray(c, bMath.cloneArray(lenArr));
+        }
+      }
+
+      return retArr;
     }
-    return retArr;
-  }
+  };
 
   bMath.range = function(n) {
     var ret = [];
