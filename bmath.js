@@ -104,6 +104,22 @@
     }
   };
 
+  bMath.cloneArray = function(arr) {
+    var i,
+        len,
+        ret;
+    if(typeof arr === 'number') {
+      return arr;
+    } else if(arr instanceof Array) {
+      len = arr.length;
+      ret = new Array(len);
+      for(i = 0; i < len; i++) {
+        ret[i] = bMath.cloneArray(arr[i]);
+      }
+      return ret;
+    }
+  };
+
   bMath.range = function(n) {
     var ret = [];
     var i;
