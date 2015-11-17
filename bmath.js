@@ -472,4 +472,10 @@
   bMath.fourier = function(arr) {
   }
   */
+
+  /*
+  // cf: [JavaScript - JSで要素の組み合わせを列挙する - Qiita](http://qiita.com/tmnck/items/0568e857af8a9bf09ba8)
+  bMath.permutations = function(arr) {
+  }
+  */
 }());
