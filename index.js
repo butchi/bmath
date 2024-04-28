@@ -563,7 +563,7 @@ const times = (...argArr) => {
             return num(num1 * num2)
         }
 
-        return new BMath('Plus', expr1, expr2)
+        return new BMath('Times', expr1, expr2)
     } else if (argArr.length >= 3) {
     } else {
     }
