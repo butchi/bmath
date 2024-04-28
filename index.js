@@ -4,20 +4,6 @@ class BMath {
         this.seq = seq
     }
 
-    toBool() {
-        if (this.head === 'Bool') {
-            const [num] = this.seq
-
-            return !!num
-        } else if (this.head === 'Bool1') {
-            return true
-        } else if (this.head === 'Bool0') {
-            return false
-        }
-
-        // return indet()
-    }
-
     toInt() {
         if (intQ(this)) {
             if (this.head === 'Num0') {
@@ -188,9 +174,7 @@ const intQ = arg => {
             return intQ(val)
         }
 
-        return bool(
-            arg.head === 'Num0' || arg.head === 'Num1' || arg.head === 'Int'
-        )
+        return arg.head === 'Num0' || arg.head === 'Num1' || arg.head === 'Int'
     }
 
     return indet()
@@ -201,14 +185,10 @@ const numQ = arg => {
         const expr = arg
 
         if (expr.head === 'Sym') {
-            return bool0()
+            return false
         }
 
-        return bool(
-            intQ(expr).toBool() ||
-                expr.head === 'Real' ||
-                expr.head === 'Complex'
-        )
+        return intQ(expr) || expr.head === 'Real' || expr.head === 'Complex'
     }
 
     return indet()
@@ -218,7 +198,7 @@ const symQ = arg => {
     if (arg instanceof BMath) {
         const expr = arg
 
-        return bool(expr.head === 'Sym')
+        return expr.head === 'Sym'
     }
 
     return indet()
@@ -228,7 +208,7 @@ const monoQ = arg => {
     if (arg instanceof BMath) {
         const expr = arg
 
-        return bool(symQ(expr) || numQ(expr))
+        return symQ(expr) || numQ(expr)
     }
 
     return indet()
@@ -238,13 +218,13 @@ const powGroupQ = arg => {
     if (arg instanceof BMath) {
         const expr = arg
 
-        return bool(
+        return (
             expr.head === 'Power' ||
-                expr.head === 'LogE' ||
-                expr.head === 'Log2' ||
-                expr.head === 'Log10' ||
-                expr.head === 'Log' ||
-                expr.head === 'Square'
+            expr.head === 'LogE' ||
+            expr.head === 'Log2' ||
+            expr.head === 'Log10' ||
+            expr.head === 'Log' ||
+            expr.head === 'Square'
         )
     }
 
@@ -255,11 +235,11 @@ const multGroupQ = arg => {
     if (arg instanceof BMath) {
         const expr = arg
 
-        return bool(
+        return (
             expr.head === 'Times' ||
-                expr.head === 'Frac' ||
-                expr.head === 'Recip' ||
-                expr.head === 'Twice'
+            expr.head === 'Frac' ||
+            expr.head === 'Recip' ||
+            expr.head === 'Twice'
         )
     }
 
@@ -270,7 +250,7 @@ const addGroupQ = arg => {
     if (arg instanceof BMath) {
         const expr = arg
 
-        return bool(expr.head === 'Plus' || expr.head === 'Minus')
+        return expr.head === 'Plus' || expr.head === 'Minus'
     }
 
     return indet()
@@ -283,7 +263,7 @@ const negative = arg => {
     if (arg instanceof BMath) {
         const expr = arg
 
-        return bool(expr.head === 'Minus')
+        return expr.head === 'Minus'
     } else {
         return negative(parse(arg))
     }
@@ -336,7 +316,7 @@ const factorInteger = n => {
 
 const squareFreeQ = n => {
     if (n === 0) {
-        return bool0()
+        return false
     }
 
     const ret = factorInteger(n).filter(keyVal => keyVal[1] > 1).length === 0
@@ -363,9 +343,9 @@ const bool = arg => {
 
         if (str === '') {
         } else if (str === '1' || str.toLocaleLowerCase() === 'true') {
-            return bool1()
+            return true
         } else if (str === '0' || str.toLocaleLowerCase() === 'false') {
-            return bool0()
+            return false
         }
     }
 
@@ -470,7 +450,7 @@ const plus = (...argArr) => {
 
         const [expr1, expr2] = [parse(arg1), parse(arg2)]
 
-        if (intQ(expr1).toBool() && intQ(expr2).toBool()) {
+        if (intQ(expr1) && intQ(expr2)) {
             const num1 = expr1.toBigInt()
             const num2 = expr2.toBigInt()
 
@@ -484,10 +464,10 @@ const plus = (...argArr) => {
         const exprArr = argArr.map(arg => parse(arg))
 
         const n = exprArr
-            .filter(expr => numQ(expr).toBool())
+            .filter(expr => numQ(expr))
             .reduce((p, c) => plus(p, c))
 
-        const poly = exprArr.filter(expr => !numQ(expr).toBool())
+        const poly = exprArr.filter(expr => !numQ(expr))
 
         // TODO さらなる簡約化
         return new BMath('Plus', ...poly, n)
@@ -515,7 +495,7 @@ const minus = (...argArr) => {
 
         const expr = parse(arg)
 
-        if (negative(expr).toBool()) {
+        if (negative(expr)) {
             return new BMath('Minus', expr.seq[0])
         }
 
@@ -556,7 +536,7 @@ const times = (...argArr) => {
 
         const [expr1, expr2] = [parse(arg1), parse(arg2)]
 
-        if (intQ(expr1).toBool() && intQ(expr2).toBool()) {
+        if (intQ(expr1) && intQ(expr2)) {
             const num1 = expr1.toBigInt()
             const num2 = expr2.toBigInt()
 
@@ -690,7 +670,7 @@ const power = (...argArr) => {
 
         const [expr1, expr2] = [parse(arg1), parse(arg2)]
 
-        if (intQ(expr1).toBool() && intQ(expr2).toBool()) {
+        if (intQ(expr1) && intQ(expr2)) {
             const num1 = expr1.toBigInt()
             const num2 = expr2.toBigInt()
 
