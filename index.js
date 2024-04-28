@@ -238,8 +238,7 @@ const multGroupQ = arg => {
         return (
             expr.head === 'Times' ||
             expr.head === 'Frac' ||
-            expr.head === 'Recip' ||
-            expr.head === 'Twice'
+            expr.head === 'Recip'
         )
     }
 
@@ -477,17 +476,6 @@ const plus = (...argArr) => {
     return indet()
 }
 
-const twice = arg => {
-    if (arg instanceof BMath) {
-        if (arg.head == null) {
-        } else if (arg.head === 'Sym') {
-            return BMath('Twice', ...arg.seq)
-        } else if (numQ(arg)) {
-            return times(arg, num(2))
-        }
-    }
-}
-
 const minus = (...argArr) => {
     if (argArr == null) {
     } else if (argArr.length === 1) {
@@ -596,8 +584,6 @@ const frac = (...argArr) => {
                     return NaN
                 } else if (num === 1) {
                     return str
-                } else if (num === 2) {
-                    return `Half("${str}")`
                 } else {
                     return `Frac("${str}", ${num})`
                 }
@@ -626,8 +612,6 @@ const frac = (...argArr) => {
                 } else if (num1 === 1) {
                     if (num2 === 1) {
                         return 1
-                    } else if (num2 === 2) {
-                        return `Half(1)`
                     } else {
                         return `Recip(${num2})`
                     }
