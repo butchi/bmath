@@ -1,3 +1,7 @@
 import bMath from "./bmath.js"
 
-console.log(bMath)
+const { BNumber } = bMath
+
+const num = new BNumber("13")
+
+console.log(num)
