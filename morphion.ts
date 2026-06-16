@@ -3,22 +3,29 @@
 // 第1層: 一般式
 type Expr =
   | { kind: "Integer"; value: bigint }
-  | { kind: "Rational"; num: bigint; den: bigint }
-  | { kind: "Complex"; re: Expr; im: Expr }
-  | { kind: "Symbol"; name: string }
-  | { kind: "Plus"; terms: Expr[] }
-  | { kind: "Times"; factors: Expr[] }
-  | { kind: "Power"; base: Expr; exp: Expr };
+  | { kind: "Rational"; value: { num: bigint; den: bigint } }
+  | { kind: "GaussianInteger"; value: { re: bigint; im: bigint } }
+  | { kind: "Complex"; value: { re: Expr; im: Expr } }
+  | { kind: "Polynarion"; value: { variable: string; terms: Map<string, Morphion> } }
+  | { kind: "Symbol"; value: string }
+  | { kind: "Plus"; value: Expr[] }
+  | { kind: "Times"; value: Expr[] }
+  | { kind: "Power"; value: { base: Expr; exp: Expr } }
+  | { kind: "MorphionForm"; value: { base: Expr; terms: Map<string, { key: Expr; coeff: Expr }> } };
 
 // 第2層: モーフィオン標準形
 type MorphionForm = {
   kind: "MorphionForm";
-  base: Expr;
-  terms: Map<string, {
-    key: Expr;
-    coeff: Expr;
-  }>;
+  value: {
+    base: Expr;
+    terms: Map<string, {
+      key: Expr;
+      coeff: Expr;
+    }>;
+  };
 };
+
+type Morphion = MorphionForm | Expr;
 
 const int = (value: bigint): Expr => ({ kind: "Integer", value });
 
@@ -43,57 +50,64 @@ const normalizeRational = (num: bigint, den: bigint): Expr => {
     d = -d;
   }
   
-  return { kind: "Rational", num: n, den: d };
+  return { kind: "Rational", value: { num: n, den: d } };
 };
 
-const sym = (name: string): Expr => ({ kind: "Symbol", name });
+const sym = (name: string): Expr => ({ kind: "Symbol", value: name });
 
 const rat = (num: bigint, den: bigint): Expr => {
   return normalizeRational(num, den);
 };
 
-const pow = (base: Expr, exp: Expr): Expr => {
+const gi = (re: bigint, im: bigint): Expr => {
+  return { kind: "GaussianInteger", value: { re, im } };
+};
+
+const complex = (re: Expr, im: Expr): Expr => {
+  return { kind: "Complex", value: { re, im } };
+};
+
+const power = (base: Expr, exp: Expr): Expr => {
   return normalize({
     kind: "Power",
-    base,
-    exp,
+    value: { base, exp },
   });
 };
 
 const plus = (...terms: Expr[]): Expr => {
   return normalize({
     kind: "Plus",
-    terms,
+    value: terms,
   });
 }
 
 const times = (...factors: Expr[]): Expr => {
   return normalize({
     kind: "Times",
-    factors,
+    value: factors,
   });
 }
 
 function normalize(m: Expr): Expr {
   if (m.kind === "Plus") {
     // 0を消す
-    const nonZeroTerms = m.terms.filter(term => !(term.kind === "Integer" && term.value === 0n));
+    const nonZeroTerms = m.value.filter(term => !(term.kind === "Integer" && term.value === 0n));
     if (nonZeroTerms.length === 0) {
       return int(0n);
     } else if (nonZeroTerms.length === 1) {
       return nonZeroTerms[0];
     } else {
-      return { kind: "Plus", terms: nonZeroTerms };
+      return { kind: "Plus", value: nonZeroTerms };
     }
   } else if (m.kind === "Times") {
     // 1を消す
-    const nonOneFactors = m.factors.filter(factor => !(factor.kind === "Integer" && factor.value === 1n));
+    const nonOneFactors = m.value.filter(factor => !(factor.kind === "Integer" && factor.value === 1n));
     if (nonOneFactors.length === 0) {
       return int(1n);
     } else if (nonOneFactors.length === 1) {
       return nonOneFactors[0];
     } else {
-      return { kind: "Times", factors: nonOneFactors };
+      return { kind: "Times", value: nonOneFactors };
     }
   } else {
     return m;
@@ -122,7 +136,7 @@ function morphion(
       terms.set(keyStr, entry);
     }
   }
-  return { kind: "MorphionForm", base, terms };
+  return { kind: "MorphionForm", value: { base, terms } };
 }
 
 function poly(
@@ -137,12 +151,10 @@ function poly(
 function rationalAsMorphion(num: bigint, den: bigint): MorphionForm {
   const frac = normalizeRational(num, den);
   if (frac.kind === "Rational") {
-    return morphion(int(frac.den), [{ key: int(-1n), coeff: int(frac.num) }]);
+    return morphion(int(frac.value.den), [{ key: int(-1n), coeff: int(frac.value.num) }]);
   }
   return morphion(int(1n), [{ key: int(0n), coeff: frac }]);
 }
-
-type Morphion = MorphionForm | Expr;
 
 const p1: Morphion = poly("x", [
   { key: 0n, coeff: int(1n) },
@@ -160,19 +172,19 @@ function toNum(n: Morphion): number {
   if (n.kind === "Integer") {
     return Number(n.value);
   } else if (n.kind === "Rational") {
-    return Number(n.num) / Number(n.den);
+    return Number(n.value.num) / Number(n.value.den);
   } else if (n.kind === "Complex") {
-    return toNum(n.re) + toNum(n.im);
+    return toNum(n.value.re) + toNum(n.value.im);
   } else if (n.kind === "Power") {
-    return Math.pow(toNum(n.base), toNum(n.exp));
+    return Math.pow(toNum(n.value.base), toNum(n.value.exp));
   } else if (n.kind === "Plus") {
-    return n.terms.reduce((sum, term) => sum + toNum(term), 0);
+    return n.value.reduce((sum, term) => sum + toNum(term), 0);
   } else if (n.kind === "Times") {
-    return n.factors.reduce((product, factor) => product * toNum(factor), 1);
+    return n.value.reduce((product, factor) => product * toNum(factor), 1);
   } else if (n.kind === "MorphionForm") {
     let result = 0;
-    for (const { key, coeff } of n.terms.values()) {
-      result += toNum(coeff) * Math.pow(toNum(n.base), toNum(key));
+    for (const { key, coeff } of n.value.terms.values()) {
+      result += toNum(coeff) * Math.pow(toNum(n.value.base), toNum(key));
     }
     return result;
   } else if (n.kind === "Symbol") {
@@ -182,51 +194,84 @@ function toNum(n: Morphion): number {
   }
 }
 
-function toComplex(n: Morphion): { re: number; im: number } {
+function gaussianToComplex(n: Expr): { re: number; im: number } {
+  if (n.kind === "GaussianInteger") {
+    return { re: Number(n.value.re), im: Number(n.value.im) };
+  } else {
+    throw new Error("Unsupported Expr type for gaussianToComplex");
+  }
+}
+
+function toComplex(n: Morphion): { re: number; im: number } | Morphion {
   if (n.kind === "Integer") {
     return { re: Number(n.value), im: 0 };
   } else if (n.kind === "Rational") {
-    return { re: Number(n.num) / Number(n.den), im: 0 };
+    return { re: Number(n.value.num) / Number(n.value.den), im: 0 };
+  } else if (n.kind === "GaussianInteger") {
+    return gaussianToComplex(n);
   } else if (n.kind === "Complex") {
     return {
-      re: toNum(n.re),
-      im: toNum(n.im),
+      re: toNum(n.value.re),
+      im: toNum(n.value.im),
     };
   } else if (n.kind === "Power") {
-    const baseCplx = toComplex(n.base);
-    const expNum = toNum(n.exp);
+    const baseCplx = toComplex(n.value.base);
+    const baseCplxObj = (typeof baseCplx === "object" && "re" in baseCplx) ? baseCplx : { re: 0, im: 0 };
+    const expNum = toNum(n.value.exp);
     
     // Convert base to polar form: r * e^(i*theta)
-    const r = Math.sqrt(baseCplx.re * baseCplx.re + baseCplx.im * baseCplx.im);
-    const theta = Math.atan2(baseCplx.im, baseCplx.re);
+    const re = Number(baseCplxObj.re);
+    const im = Number(baseCplxObj.im);
+    const r = Math.sqrt(re * re + im * im);
+    const theta = Math.atan2(im, re);
     
     // Calculate (r * e^(i*theta))^exp = r^exp * e^(i*theta*exp)
     const rExp = Math.pow(r, expNum);
     const thetaExp = theta * expNum;
     
     // Convert back to rectangular form
-    return {
+    const result = {
       re: rExp * Math.cos(thetaExp),
       im: rExp * Math.sin(thetaExp),
     };
+    
+    // 実部、虚部ともに整数の場合、複素数を返す
+    if (Number.isInteger(result.re) && Number.isInteger(result.im)) {
+      return complex(int(BigInt(result.re)), int(BigInt(result.im)));
+    }
+    return result;
   } else if (n.kind === "Plus") {
     let re = 0;
     let im = 0;
-    for (const term of n.terms) {
+    for (const term of n.value) {
       const termCplx = toComplex(term);
-      re += termCplx.re;
-      im += termCplx.im;
+      const termCplxObj = (typeof termCplx === "object" && "re" in termCplx) ? termCplx : { re: 0, im: 0 };
+      re += typeof termCplxObj.re === "number" ? termCplxObj.re : 0;
+      im += typeof termCplxObj.im === "number" ? termCplxObj.im : 0;
+    }
+    
+    // 実部、虚部ともに整数の場合、複素数を返す
+    if (Number.isInteger(re) && Number.isInteger(im)) {
+      return complex(int(BigInt(re)), int(BigInt(im)));
     }
     return { re, im };
   } else if (n.kind === "Times") {
     let re = 1;
     let im = 0;
-    for (const factor of n.factors) {
+    for (const factor of n.value) {
       const factorCplx = toComplex(factor);
-      const newRe = re * factorCplx.re - im * factorCplx.im;
-      const newIm = re * factorCplx.im + im * factorCplx.re;
+      const factorCplxObj = (typeof factorCplx === "object" && "re" in factorCplx) ? factorCplx : { re: 0, im: 0 };
+      const re_val = typeof factorCplxObj.re === "number" ? factorCplxObj.re : 0;
+      const im_val = typeof factorCplxObj.im === "number" ? factorCplxObj.im : 0;
+      const newRe = re * re_val - im * im_val;
+      const newIm = re * im_val + im * re_val;
       re = newRe;
       im = newIm;
+    }
+    
+    // 実部、虚部ともに整数の場合、複素数を返す
+    if (Number.isInteger(re) && Number.isInteger(im)) {
+      return complex(int(BigInt(re)), int(BigInt(im)));
     }
     return { re, im };
   } else if (n.kind === "Symbol") {
@@ -240,19 +285,19 @@ function toExpression(n: Morphion): string {
   if (n.kind === "Integer") {
     return n.value.toString();
   } else if (n.kind === "Rational") {
-    return `(${toExpression(int(n.num))}/${toExpression(int(n.den))})`;
+    return `(${toExpression(int(n.value.num))}/${toExpression(int(n.value.den))})`;
   } else if (n.kind === "Complex") {
-    return `(${toExpression(n.re)} + ${toExpression(n.im)}i)`;
+    return `(${toExpression(n.value.re)} + ${toExpression(n.value.im)}i)`;
   } else if (n.kind === "Power") {
-    return `(${toExpression(n.base)}^(${toExpression(n.exp)}))`;
+    return `(${toExpression(n.value.base)}^(${toExpression(n.value.exp)}))`;
   } else if (n.kind === "Plus") {
-    return n.terms.map(term => toExpression(term)).join(" + ");
+    return n.value.map(term => toExpression(term)).join(" + ");
   } else if (n.kind === "Times") {
-    return n.factors.map(factor => toExpression(factor)).join(" * ");
+    return n.value.map(factor => toExpression(factor)).join(" * ");
   } else if (n.kind === "MorphionForm") {
-    return Array.from(n.terms.values()).map(({ key, coeff }: { key: Expr; coeff: Expr }) => `(${toExpression(coeff)}) * (${toExpression(n.base)}^(${toExpression(key)}))`).join(" + ");
+    return Array.from(n.value.terms.values()).map(({ key, coeff }: { key: Expr; coeff: Expr }) => `(${toExpression(coeff)}) * (${toExpression(n.value.base)}^(${toExpression(key)}))`).join(" + ");
   } else if (n.kind === "Symbol") {
-    return n.name;
+    return n.value;
   } else {
     throw new Error("Unsupported Morphion type for toExpression");
   }
@@ -288,17 +333,19 @@ function toMorphionForm(n: Morphion): MorphionForm {
   if (n.kind === "Integer") {
     return morphion(int(1n), [{ key: int(0n), coeff: n }]);
   } else if (n.kind === "Rational") {
-    return rationalAsMorphion(n.num, n.den);
+    return rationalAsMorphion(n.value.num, n.value.den);
+  } else if (n.kind === "GaussianInteger") {
+    return complexAsMorphion(int(n.value.re), int(n.value.im));
   } else if (n.kind === "Complex") {
-    return complexAsMorphion(n.re, n.im);
+    return complexAsMorphion(n.value.re, n.value.im);
   } else if (n.kind === "Power") {
-    if (n.base.kind === "Symbol" && n.base.name === "x") {
-      return morphion(sym("x"), [{ key: n.exp, coeff: int(1n) }]);
+    if (n.value.base.kind === "Symbol" && n.value.base.value === "x") {
+      return morphion(sym("x"), [{ key: n.value.exp, coeff: int(1n) }]);
     } else {
       throw new Error("Unsupported base for Power in toMorphionForm");
     }
   } else if (n.kind === "Plus" || n.kind === "Times") {
-    const termsOrFactors = n.kind === "Plus" ? n.terms : n.factors;
+    const termsOrFactors = n.kind === "Plus" ? n.value : n.value;
     
     if (n.kind === "Plus") {
       return morphion(sym("x"), termsOrFactors.map((term, index) => ({
@@ -321,16 +368,23 @@ function toMorphionForm(n: Morphion): MorphionForm {
   }
 }
 
+const gi1 = gi(1n, 2n);
+const gi2 = gi(3n, 4n);
+
 const frac12 = rat(1n, 2n);
 
-const sqrt2 = pow(int(2n), rat(1n, 2n));
+const sqrt2 = power(int(2n), rat(1n, 2n));
 
 console.log(toExpression(frac12)); // (1/2)
+console.log(toMorphionForm(frac12)); // { kind: 'MorphionForm', base: { kind: 'Integer', value: 2n }, terms: Map(1) { '{"key":{"kind":"Integer","value":-1n},"coeff":{"kind":"Integer","value":1n}}' => { key: { kind: 'Integer', value: -1n }, coeff: { kind: 'Integer', value: 1n } } } }
 console.log(toExpression(sqrt2)); // ((2)^(1/2))
+console.log(toJson(sqrt2));
 console.log(toComplex(sqrt2)); // { re: 1.414213562373095, im: 0 }
-console.log(toExpression(pow(int(-1n), frac12))); // ((-1)^(1/2))
-console.log(toComplex(pow(int(-1n), frac12))); // { re: 0, im: 1 }
-console.log(toExpression(pow(int(2n), frac12))); // ((2)^(1/2))
-console.log(toComplex(pow(int(2n), frac12))); // { re: 1.414213562373095, im: 0 }
+console.log(toComplex(power(int(2n), frac12))); // { re: 1.414213562373095, im: 0 }
+console.log(toExpression(power(int(-1n), frac12))); // ((-1)^(1/2))
+console.log(toComplex(power(int(-1n), frac12))); // { re: 0, im: 1 }
+console.log(toExpression(power(int(2n), frac12))); // ((2)^(1/2))
+console.log(toComplex(gi1)); // { re: 1, im: 2 }
+console.log(toComplex(gi2)); // { re: 3, im: 4 }
 
-export { Morphion, toNum, pow as power, toComplex };
+export { Morphion, toNum, power, toComplex };
