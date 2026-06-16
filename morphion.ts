@@ -370,12 +370,12 @@ function toMorphionForm(n: Expr): MorphionForm {
   }
 }
 
-function exprKey(e: Expr): string {
+function keyOf(e: Expr): string {
   return JSON.stringify(e, replacer);
 }
 
 function sameExpr(a: Expr, b: Expr): boolean {
-  return exprKey(a) === exprKey(b);
+  return keyOf(a) === keyOf(b);
 }
 
 // same base only
