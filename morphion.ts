@@ -3,25 +3,22 @@
 // 第1層: 一般式
 type Expr =
   | { kind: "Integer"; value: bigint }
-  | { kind: "Rational"; value: { num: bigint; den: bigint } }
-  | { kind: "GaussianInteger"; value: { re: bigint; im: bigint } }
-  | { kind: "Complex"; value: { re: Expr; im: Expr } }
-  | { kind: "Polynarion"; value: { variable: string; terms: Map<string, MorphionForm> } }
-  | { kind: "Symbol"; value: string }
-  | { kind: "Plus"; value: Expr[] }
-  | { kind: "Times"; value: Expr[] }
-  | { kind: "Power"; value: { base: Expr; exp: Expr } }
+  | { kind: "Rational"; num: bigint; den: bigint }
+  | { kind: "GaussianInteger"; re: bigint; im: bigint }
+  | { kind: "Complex"; re: Expr; im: Expr }
+  | { kind: "Symbol"; name: string }
+  | { kind: "Plus"; terms: Expr[] }
+  | { kind: "Times"; factors: Expr[] }
+  | { kind: "Power"; base: Expr; exp: Expr };
 
 // 第2層: モーフィオン標準形
 type MorphionForm = {
   kind: "MorphionForm";
-  value: {
-    base: Expr;
-    terms: Map<string, {
-      key: Expr;
-      coeff: Expr;
-    }>;
-  };
+  base: Expr;
+  terms: Map<string, {
+    key: Expr;
+    coeff: Expr;
+  }>;
 };
 
 const int = (value: bigint): Expr => ({ kind: "Integer", value });
@@ -47,41 +44,42 @@ const normalizeRational = (num: bigint, den: bigint): Expr => {
     d = -d;
   }
   
-  return { kind: "Rational", value: { num: n, den: d } };
+  return { kind: "Rational", num: n, den: d };
 };
 
-const sym = (name: string): Expr => ({ kind: "Symbol", value: name });
+const sym = (name: string): Expr => ({ kind: "Symbol", name: name });
 
 const rat = (num: bigint, den: bigint): Expr => {
   return normalizeRational(num, den);
 };
 
 const gi = (re: bigint, im: bigint): Expr => {
-  return { kind: "GaussianInteger", value: { re, im } };
+  return { kind: "GaussianInteger", re, im };
 };
 
 const complex = (re: Expr, im: Expr): Expr => {
-  return { kind: "Complex", value: { re, im } };
+  return { kind: "Complex", re, im };
 };
 
 const power = (base: Expr, exp: Expr): Expr => {
   return normalize({
     kind: "Power",
-    value: { base, exp },
+    base,
+    exp,
   });
 };
 
 const plus = (...terms: Expr[]): Expr => {
   return normalize({
     kind: "Plus",
-    value: terms,
+    terms: terms,
   });
 }
 
 const times = (...factors: Expr[]): Expr => {
   return normalize({
     kind: "Times",
-    value: factors,
+    factors: factors,
   });
 }
 
@@ -90,7 +88,7 @@ function normalize(m: Expr): Expr {
     // 全ての整数項を合計
     let integerSum = 0n;
     const otherTerms = [];
-    for (const term of m.value) {
+    for (const term of m.terms) {
       if (term.kind === "Integer") {
         integerSum += term.value;
       } else {
@@ -106,13 +104,13 @@ function normalize(m: Expr): Expr {
     } else if (allTerms.length === 1) {
       return allTerms[0];
     } else {
-      return { kind: "Plus", value: allTerms };
+      return { kind: "Plus", terms: allTerms };
     }
   } else if (m.kind === "Times") {
     // 全ての整数項を乗算
     let integerProduct = 1n;
     const otherFactors = [];
-    for (const factor of m.value) {
+    for (const factor of m.factors) {
       if (factor.kind === "Integer") {
         integerProduct *= factor.value;
       } else {
@@ -128,13 +126,13 @@ function normalize(m: Expr): Expr {
     } else if (allFactors.length === 1) {
       return allFactors[0];
     } else {
-      return { kind: "Times", value: allFactors };
+      return { kind: "Times", factors: allFactors };
     }
   } else if (m.kind === "Power") {
     // Integer ^ Integer の場合は計算
-    if (m.value.base.kind === "Integer" && m.value.exp.kind === "Integer") {
-      const base = m.value.base.value;
-      const exp = m.value.exp.value;
+    if (m.base.kind === "Integer" && m.exp.kind === "Integer") {
+      const base = m.base.value;
+      const exp = m.exp.value;
       if (exp >= 0n) {
         return int(base ** exp);
       }
@@ -162,7 +160,7 @@ function morphion(
       terms.set(keyStr, entry);
     }
   }
-  return { kind: "MorphionForm", value: { base, terms } };
+  return { kind: "MorphionForm", base, terms };
 }
 
 function poly(
@@ -177,7 +175,7 @@ function poly(
 function rationalAsMorphion(num: bigint, den: bigint): MorphionForm {
   const frac = normalizeRational(num, den);
   if (frac.kind === "Rational") {
-    return morphion(int(frac.value.den), [{ key: int(-1n), coeff: int(frac.value.num) }]);
+    return morphion(int(frac.den), [{ key: int(-1n), coeff: int(frac.num) }]);
   }
   return morphion(int(1n), [{ key: int(0n), coeff: frac }]);
 }
@@ -186,19 +184,19 @@ function toNum(n: Expr | MorphionForm): number {
   if (n.kind === "Integer") {
     return Number(n.value);
   } else if (n.kind === "Rational") {
-    return Number(n.value.num) / Number(n.value.den);
+    return Number(n.num) / Number(n.den);
   } else if (n.kind === "Complex") {
     return NaN; // 複素数は数値に変換できないのでNaNを返す
   } else if (n.kind === "Power") {
-    return Math.pow(toNum(n.value.base), toNum(n.value.exp));
+    return Math.pow(toNum(n.base), toNum(n.exp));
   } else if (n.kind === "Plus") {
-    return n.value.reduce((sum, term) => sum + toNum(term), 0);
+    return n.terms.reduce((sum, term) => sum + toNum(term), 0);
   } else if (n.kind === "Times") {
-    return n.value.reduce((product, factor) => product * toNum(factor), 1);
+    return n.factors.reduce((product, factor) => product * toNum(factor), 1);
   } else if (n.kind === "MorphionForm") {
     let result = 0;
-    for (const { key, coeff } of n.value.terms.values()) {
-      result += toNum(coeff) * Math.pow(toNum(n.value.base), toNum(key));
+    for (const { key, coeff } of n.terms.values()) {
+      result += toNum(coeff) * Math.pow(toNum(n.base), toNum(key));
     }
     return result;
   } else if (n.kind === "Symbol") {
@@ -210,7 +208,7 @@ function toNum(n: Expr | MorphionForm): number {
 
 function gaussianToComplex(n: Expr): { re: number; im: number } {
   if (n.kind === "GaussianInteger") {
-    return { re: Number(n.value.re), im: Number(n.value.im) };
+    return { re: Number(n.re), im: Number(n.im) };
   } else {
     throw new Error("Unsupported Expr type for gaussianToComplex");
   }
@@ -220,18 +218,18 @@ function toComplex(n: Expr | MorphionForm): { re: number; im: number } | Morphio
   if (n.kind === "Integer") {
     return { re: Number(n.value), im: 0 };
   } else if (n.kind === "Rational") {
-    return { re: Number(n.value.num) / Number(n.value.den), im: 0 };
+    return { re: Number(n.num) / Number(n.den), im: 0 };
   } else if (n.kind === "GaussianInteger") {
     return gaussianToComplex(n);
   } else if (n.kind === "Complex") {
     return {
-      re: toNum(n.value.re),
-      im: toNum(n.value.im),
+      re: toNum(n.re),
+      im: toNum(n.im),
     };
   } else if (n.kind === "Power") {
-    const baseCplx = toComplex(n.value.base);
+    const baseCplx = toComplex(n.base);
     const baseCplxObj = (typeof baseCplx === "object" && "re" in baseCplx) ? baseCplx : { re: 0, im: 0 };
-    const expNum = toNum(n.value.exp);
+    const expNum = toNum(n.exp);
     
     // Convert base to polar form: r * e^(i*theta)
     const re = Number(baseCplxObj.re);
@@ -253,7 +251,7 @@ function toComplex(n: Expr | MorphionForm): { re: number; im: number } | Morphio
   } else if (n.kind === "Plus") {
     let re = 0;
     let im = 0;
-    for (const term of n.value) {
+    for (const term of n.terms) {
       const termCplx = toComplex(term);
       const termCplxObj = (typeof termCplx === "object" && "re" in termCplx) ? termCplx : { re: 0, im: 0 };
       re += typeof termCplxObj.re === "number" ? termCplxObj.re : 0;
@@ -264,7 +262,7 @@ function toComplex(n: Expr | MorphionForm): { re: number; im: number } | Morphio
   } else if (n.kind === "Times") {
     let re = 1;
     let im = 0;
-    for (const factor of n.value) {
+    for (const factor of n.factors) {
       const factorCplx = toComplex(factor);
       const factorCplxObj = (typeof factorCplx === "object" && "re" in factorCplx) ? factorCplx : { re: 0, im: 0 };
       const re_val = typeof factorCplxObj.re === "number" ? factorCplxObj.re : 0;
@@ -287,19 +285,19 @@ function toExpression(n: Expr | MorphionForm): string {
   if (n.kind === "Integer") {
     return n.value.toString();
   } else if (n.kind === "Rational") {
-    return `(${toExpression(int(n.value.num))}/${toExpression(int(n.value.den))})`;
+    return `(${toExpression(int(n.num))}/${toExpression(int(n.den))})`;
   } else if (n.kind === "Complex") {
-    return `(${toExpression(n.value.re)} + ${toExpression(n.value.im)}i)`;
+    return `(${toExpression(n.re)} + ${toExpression(n.im)}i)`;
   } else if (n.kind === "Power") {
-    return `(${toExpression(n.value.base)}^(${toExpression(n.value.exp)}))`;
+    return `(${toExpression(n.base)}^(${toExpression(n.exp)}))`;
   } else if (n.kind === "Plus") {
-    return n.value.map(term => toExpression(term)).join(" + ");
+    return n.terms.map(term => toExpression(term)).join(" + ");
   } else if (n.kind === "Times") {
-    return n.value.map(factor => toExpression(factor)).join(" * ");
+    return n.factors.map(factor => toExpression(factor)).join(" * ");
   } else if (n.kind === "MorphionForm") {
-    return Array.from(n.value.terms.values()).map(({ key, coeff }: { key: Expr; coeff: Expr }) => `(${toExpression(coeff)}) * (${toExpression(n.value.base)}^(${toExpression(key)}))`).join(" + ");
+    return Array.from(n.terms.values()).map(({ key, coeff }: { key: Expr; coeff: Expr }) => `(${toExpression(coeff)}) * (${toExpression(n.base)}^(${toExpression(key)}))`).join(" + ");
   } else if (n.kind === "Symbol") {
-    return n.value;
+    return n.name;
   } else {
     throw new Error("Unsupported Morphion type for toExpression");
   }
@@ -336,14 +334,14 @@ function toMorphionForm(n: Expr): MorphionForm {
   if (n.kind === "Integer") {
     return morphion(int(1n), [{ key: int(0n), coeff: n }]);
   } else if (n.kind === "Rational") {
-    return rationalAsMorphion(n.value.num, n.value.den);
+    return rationalAsMorphion(n.num, n.den);
   } else if (n.kind === "GaussianInteger") {
-    return complexAsMorphion(int(n.value.re), int(n.value.im));
+    return complexAsMorphion(int(n.re), int(n.im));
   } else if (n.kind === "Complex") {
-    return complexAsMorphion(n.value.re, n.value.im);
+    return complexAsMorphion(n.re, n.im);
   } else if (n.kind === "Power") {
-    if (n.value.base.kind === "Symbol" && n.value.base.value === "x") {
-      return morphion(sym("x"), [{ key: n.value.exp, coeff: int(1n) }]);
+    if (n.base.kind === "Symbol" && n.base.name === "x") {
+      return morphion(sym("x"), [{ key: n.exp, coeff: int(1n) }]);
     } else {
       throw new Error("Unsupported base for Power in toMorphionForm");
     }
@@ -355,16 +353,16 @@ function toMorphionForm(n: Expr): MorphionForm {
 }
 
 function addMorphionForms(a: MorphionForm, b: MorphionForm): MorphionForm {
-  if (a.value.base.kind === "Symbol" && b.value.base.kind === "Symbol" && a.value.base.value === b.value.base.value) {
-    const base = a.value.base;
+  if (a.base.kind === "Symbol" && b.base.kind === "Symbol" && a.base === b.base) {
+    const base = a.base;
     const terms = new Map<string, { key: Expr; coeff: Expr }>();
 
-    for (const { key, coeff } of a.value.terms.values()) {
+    for (const { key, coeff } of a.terms.values()) {
       const keyStr = JSON.stringify(key, replacer);
       terms.set(keyStr, { key, coeff });
     }
 
-    for (const { key, coeff } of b.value.terms.values()) {
+    for (const { key, coeff } of b.terms.values()) {
       const keyStr = JSON.stringify(key, replacer);
       if (terms.has(keyStr)) {
         const existing = terms.get(keyStr)!;
@@ -377,19 +375,19 @@ function addMorphionForms(a: MorphionForm, b: MorphionForm): MorphionForm {
       }
     }
 
-    return { kind: "MorphionForm", value: { base, terms } };
+    return { kind: "MorphionForm", base, terms };
   } else {
     throw new Error("Cannot add MorphionForms with different bases");
   }
 }
 
 function mulMorphionForms(a: MorphionForm, b: MorphionForm): MorphionForm {
-  if (a.value.base.kind === "Symbol" && b.value.base.kind === "Symbol" && a.value.base.value === b.value.base.value) {
-    const base = a.value.base;
+  if (a.base.kind === "Symbol" && b.base.kind === "Symbol" && a.base === b.base) {
+    const base = a.base;
     const terms = new Map<string, { key: Expr; coeff: Expr }>();
 
-    for (const { key: keyA, coeff: coeffA } of a.value.terms.values()) {
-      for (const { key: keyB, coeff: coeffB } of b.value.terms.values()) {
+    for (const { key: keyA, coeff: coeffA } of a.terms.values()) {
+      for (const { key: keyB, coeff: coeffB } of b.terms.values()) {
         const newKey = plus(keyA, keyB);
         const newCoeff = times(coeffA, coeffB);
         const newKeyStr = JSON.stringify(newKey, replacer);
@@ -405,7 +403,7 @@ function mulMorphionForms(a: MorphionForm, b: MorphionForm): MorphionForm {
       }
     }
 
-    return { kind: "MorphionForm", value: { base, terms } };
+    return { kind: "MorphionForm", base, terms };
   } else {
     throw new Error("Cannot multiply MorphionForms with different bases");
   }
@@ -414,26 +412,22 @@ function mulMorphionForms(a: MorphionForm, b: MorphionForm): MorphionForm {
 // Test cases
 const d1: MorphionForm = {
   kind: "MorphionForm",
-  value: {
-    base: int(10n),
-    terms: new Map<string, { key: Expr; coeff: Expr }>([
-      [JSON.stringify(int(0n), replacer), { key: int(0n), coeff: int(1n) }],
-      [JSON.stringify(int(1n), replacer), { key: int(1n), coeff: int(2n) }],
-      [JSON.stringify(int(2n), replacer), { key: int(2n), coeff: int(3n) }],
-    ]),
-  },
+  base: int(10n),
+  terms: new Map<string, { key: Expr; coeff: Expr }>([
+    [JSON.stringify(int(0n), replacer), { key: int(0n), coeff: int(1n) }],
+    [JSON.stringify(int(1n), replacer), { key: int(1n), coeff: int(2n) }],
+    [JSON.stringify(int(2n), replacer), { key: int(2n), coeff: int(3n) }],
+  ]),
 };
 
 const d2: MorphionForm = {
   kind: "MorphionForm",
-  value: {
-    base: int(10n),
-    terms: new Map<string, { key: Expr; coeff: Expr }>([
-      [JSON.stringify(int(0n), replacer), { key: int(0n), coeff: int(4n) }],
-      [JSON.stringify(int(1n), replacer), { key: int(1n), coeff: int(5n) }],
-      [JSON.stringify(int(2n), replacer), { key: int(2n), coeff: int(6n) }],
-    ]),
-  },
+  base: int(10n),
+  terms: new Map<string, { key: Expr; coeff: Expr }>([
+    [JSON.stringify(int(0n), replacer), { key: int(0n), coeff: int(4n) }],
+    [JSON.stringify(int(1n), replacer), { key: int(1n), coeff: int(5n) }],
+    [JSON.stringify(int(2n), replacer), { key: int(2n), coeff: int(6n) }],
+  ]),
 };
 
 console.log(toNum(d1)); // 321
@@ -445,26 +439,22 @@ console.log(toJson(d2));
 
 const p1: MorphionForm = {
   kind: "MorphionForm",
-  value: {
-    base: sym("x"),
-    terms: new Map<string, { key: Expr; coeff: Expr }>([
-      [JSON.stringify(int(0n), replacer), { key: int(0n), coeff: int(1n) }],
-      [JSON.stringify(int(1n), replacer), { key: int(1n), coeff: int(2n) }],
-      [JSON.stringify(int(2n), replacer), { key: int(2n), coeff: int(3n) }],
-    ]),
-  },
+  base: sym("x"),
+  terms: new Map<string, { key: Expr; coeff: Expr }>([
+    [JSON.stringify(int(0n), replacer), { key: int(0n), coeff: int(1n) }],
+    [JSON.stringify(int(1n), replacer), { key: int(1n), coeff: int(2n) }],
+    [JSON.stringify(int(2n), replacer), { key: int(2n), coeff: int(3n) }],
+  ]),
 };
 
 const p2: MorphionForm = {
   kind: "MorphionForm",
-  value: {
-    base: sym("x"),
-    terms: new Map<string, { key: Expr; coeff: Expr }>([
-      [JSON.stringify(int(0n), replacer), { key: int(0n), coeff: int(4n) }],
-      [JSON.stringify(int(1n), replacer), { key: int(1n), coeff: int(5n) }],
-      [JSON.stringify(int(2n), replacer), { key: int(2n), coeff: int(6n) }],
-    ]),
-  },
+  base: sym("x"),
+  terms: new Map<string, { key: Expr; coeff: Expr }>([
+    [JSON.stringify(int(0n), replacer), { key: int(0n), coeff: int(4n) }],
+    [JSON.stringify(int(1n), replacer), { key: int(1n), coeff: int(5n) }],
+    [JSON.stringify(int(2n), replacer), { key: int(2n), coeff: int(6n) }],
+  ]),
 };
 
 console.log(toNum(p1)); // NaN (シンボルが含まれているため数値に変換できない)
