@@ -35,6 +35,11 @@ const gcd = (a: bigint, b: bigint): bigint => {
 const normalizeRational = (num: bigint, den: bigint): Expr => {
   // gcdで約分
   // den > 0 に正規化
+
+  if (den === 0n) {
+    throw new Error("Denominator cannot be zero");
+  }
+
   const g = gcd(num, den);
   let n = num / g;
   let d = den / g;
@@ -117,6 +122,10 @@ function normalize(m: Expr): Expr {
         otherFactors.push(factor);
       }
     }
+
+    if (integerProduct === 0n) {
+      return int(0n);
+    }
     
     // 乗算した整数が1でない場合は追加
     const allFactors = integerProduct !== 1n ? [int(integerProduct), ...otherFactors] : otherFactors;
@@ -129,15 +138,24 @@ function normalize(m: Expr): Expr {
       return { kind: "Times", factors: allFactors };
     }
   } else if (m.kind === "Power") {
-    // Integer ^ Integer の場合は計算
-    if (m.base.kind === "Integer" && m.exp.kind === "Integer") {
-      const base = m.base.value;
-      const exp = m.exp.value;
-      if (exp >= 0n) {
-        return int(base ** exp);
+    const base = m.base;
+    const exp = m.exp;
+
+    if (base.kind === "Integer" && exp.kind === "Integer") {
+      if (exp.value === 0n) {
+        return int(1n);
+      }
+
+      if (base.value === 0n) {
+        return int(0n);
       }
     }
-    return m;
+
+    return {
+      kind: "Power",
+      base,
+      exp,
+    };
   } else {
     return m;
   }
@@ -352,8 +370,17 @@ function toMorphionForm(n: Expr): MorphionForm {
   }
 }
 
+function exprKey(e: Expr): string {
+  return JSON.stringify(e, replacer);
+}
+
+function sameExpr(a: Expr, b: Expr): boolean {
+  return exprKey(a) === exprKey(b);
+}
+
+// same base only
 function addMorphionForms(a: MorphionForm, b: MorphionForm): MorphionForm {
-  if (a.base.kind === "Symbol" && b.base.kind === "Symbol" && a.base === b.base) {
+  if (sameExpr(a.base, b.base)) {
     const base = a.base;
     const terms = new Map<string, { key: Expr; coeff: Expr }>();
 
@@ -375,14 +402,17 @@ function addMorphionForms(a: MorphionForm, b: MorphionForm): MorphionForm {
       }
     }
 
-    return { kind: "MorphionForm", base, terms };
+    const entries = Array.from(terms.values());
+
+    return morphion(base, entries);
   } else {
     throw new Error("Cannot add MorphionForms with different bases");
   }
 }
 
+// same base only
 function mulMorphionForms(a: MorphionForm, b: MorphionForm): MorphionForm {
-  if (a.base.kind === "Symbol" && b.base.kind === "Symbol" && a.base === b.base) {
+  if (sameExpr(a.base, b.base)) {
     const base = a.base;
     const terms = new Map<string, { key: Expr; coeff: Expr }>();
 
@@ -403,7 +433,9 @@ function mulMorphionForms(a: MorphionForm, b: MorphionForm): MorphionForm {
       }
     }
 
-    return { kind: "MorphionForm", base, terms };
+    const entries = Array.from(terms.values());
+
+    return morphion(base, entries);
   } else {
     throw new Error("Cannot multiply MorphionForms with different bases");
   }
@@ -463,6 +495,35 @@ console.log(toExpression(p1)); // (1) * (x)^(0) + (2) * (x)^(1) + (3) * (x)^(2)
 console.log(toExpression(p2)); // (4) * (x)^(0) + (5) * (x)^(1) + (6) * (x)^(2)
 console.log(toJson(p1));
 console.log(toJson(p2));
+
+const p3 = addMorphionForms(p1, p2);
+const p4 = mulMorphionForms(p1, p2);
+
+console.log(toNum(p3)); // NaN (シンボルが含まれているため数値に変換できない)
+console.log(toNum(p4)); // NaN (シンボルが含まれているため数値に変換できない)
+console.log(toExpression(p3)); // (5) * (x)^(0) + (7) * (x)^(1) + (9) * (x)^(2)
+console.log(toExpression(p4)); // (4) * (x)^(0) + (13) * (x)^(1) + (28) * (x)^(2) + (27) * (x)^(3) + (18) * (x)^(4)
+console.log(toJson(p3));
+console.log(toJson(p4));
+
+const poly1 = poly("x", [
+  { key: 0n, coeff: int(1n) },
+  { key: 1n, coeff: int(2n) },
+  { key: 2n, coeff: int(3n) },
+]);
+
+const poly2 = poly("x", [
+  { key: 0n, coeff: int(4n) },
+  { key: 1n, coeff: int(5n) },
+  { key: 2n, coeff: int(6n) },
+]);
+
+console.log(toNum(poly1)); // NaN (シンボルが含まれているため数値に変換できない)
+console.log(toNum(poly2)); // NaN (シンボルが含まれているため数値に変換できない)
+console.log(toExpression(poly1)); // (1) * (x)^(0) + (2) * (x)^(1) + (3) * (x)^(2)
+console.log(toExpression(poly2)); // (4) * (x)^(0) + (5) * (x)^(1) + (6) * (x)^(2)
+console.log(toJson(poly1));
+console.log(toJson(poly2));
 
 const gi1 = gi(1n, 2n);
 const gi2 = gi(3n, 4n);
