@@ -6,6 +6,7 @@ import { morphion } from "./morphion";
 
 type ComplexNumber = { re: number; im: number };
 type RationalParts = { num: bigint; den: bigint };
+type ComplexRational = { re: RationalParts; im: RationalParts };
 
 function absBigInt(n: bigint): bigint {
   return n < 0n ? -n : n;
@@ -117,8 +118,82 @@ function mulFraction(a: RationalParts, b: RationalParts): RationalParts {
   return normalizeFraction(a.num * b.num, a.den * b.den);
 }
 
+function subFraction(a: RationalParts, b: RationalParts): RationalParts {
+  return normalizeFraction(a.num * b.den - b.num * a.den, a.den * b.den);
+}
+
+function divFraction(a: RationalParts, b: RationalParts): RationalParts | null {
+  if (b.num === 0n) {
+    return null;
+  }
+  return normalizeFraction(a.num * b.den, a.den * b.num);
+}
+
 function addFraction(a: RationalParts, b: RationalParts): RationalParts {
   return normalizeFraction(a.num * b.den + b.num * a.den, a.den * b.den);
+}
+
+function isZeroFraction(a: RationalParts): boolean {
+  return a.num === 0n;
+}
+
+function addComplexFraction(a: ComplexRational, b: ComplexRational): ComplexRational {
+  return {
+    re: addFraction(a.re, b.re),
+    im: addFraction(a.im, b.im),
+  };
+}
+
+function mulComplexFraction(a: ComplexRational, b: ComplexRational): ComplexRational {
+  return {
+    re: subFraction(mulFraction(a.re, b.re), mulFraction(a.im, b.im)),
+    im: addFraction(mulFraction(a.re, b.im), mulFraction(a.im, b.re)),
+  };
+}
+
+function invComplexFraction(a: ComplexRational): ComplexRational | null {
+  const denom = addFraction(mulFraction(a.re, a.re), mulFraction(a.im, a.im));
+  if (isZeroFraction(denom)) {
+    return null;
+  }
+
+  const re = divFraction(a.re, denom);
+  const im = divFraction(normalizeFraction(-a.im.num, a.im.den), denom);
+  if (!re || !im) {
+    return null;
+  }
+
+  return { re, im };
+}
+
+function powComplexFractionByInteger(base: ComplexRational, exp: bigint): ComplexRational | null {
+  if (exp === 0n) {
+    return {
+      re: { num: 1n, den: 1n },
+      im: { num: 0n, den: 1n },
+    };
+  }
+
+  let e = exp < 0n ? -exp : exp;
+  let b: ComplexRational = { re: base.re, im: base.im };
+  let result: ComplexRational = {
+    re: { num: 1n, den: 1n },
+    im: { num: 0n, den: 1n },
+  };
+
+  while (e > 0n) {
+    if ((e & 1n) === 1n) {
+      result = mulComplexFraction(result, b);
+    }
+    b = mulComplexFraction(b, b);
+    e >>= 1n;
+  }
+
+  if (exp > 0n) {
+    return result;
+  }
+
+  return invComplexFraction(result);
 }
 
 function exprToFraction(e: Expr): RationalParts | null {
@@ -158,6 +233,70 @@ function exprToFraction(e: Expr): RationalParts | null {
     }
     return powRationalByInteger(base, exp.num);
   }
+  return null;
+}
+
+function exprToComplexFraction(e: Expr): ComplexRational | null {
+  const frac = exprToFraction(e);
+  if (frac) {
+    return { re: frac, im: { num: 0n, den: 1n } };
+  }
+
+  if (e.kind === "GaussianInteger") {
+    return {
+      re: { num: e.re, den: 1n },
+      im: { num: e.im, den: 1n },
+    };
+  }
+
+  if (e.kind === "Complex") {
+    const re = exprToFraction(e.re);
+    const im = exprToFraction(e.im);
+    if (!re || !im) {
+      return null;
+    }
+    return { re, im };
+  }
+
+  if (e.kind === "Plus") {
+    let acc: ComplexRational = {
+      re: { num: 0n, den: 1n },
+      im: { num: 0n, den: 1n },
+    };
+    for (const term of e.terms) {
+      const t = exprToComplexFraction(term);
+      if (!t) {
+        return null;
+      }
+      acc = addComplexFraction(acc, t);
+    }
+    return acc;
+  }
+
+  if (e.kind === "Times") {
+    let acc: ComplexRational = {
+      re: { num: 1n, den: 1n },
+      im: { num: 0n, den: 1n },
+    };
+    for (const factor of e.factors) {
+      const f = exprToComplexFraction(factor);
+      if (!f) {
+        return null;
+      }
+      acc = mulComplexFraction(acc, f);
+    }
+    return acc;
+  }
+
+  if (e.kind === "Power") {
+    const base = exprToComplexFraction(e.base);
+    const exp = exprToFraction(e.exp);
+    if (!base || !exp || exp.den !== 1n) {
+      return null;
+    }
+    return powComplexFractionByInteger(base, exp.num);
+  }
+
   return null;
 }
 
@@ -251,6 +390,28 @@ function exactRealRationalPower(baseExpr: Expr, expExpr: Expr): ComplexNumber | 
 }
 
 function axisUnitAndMagnitude(baseExpr: Expr): { unit: ComplexNumber; magnitude: RationalParts } | null {
+  const exactBase = exprToComplexFraction(baseExpr);
+  if (exactBase) {
+    const re = exactBase.re;
+    const im = exactBase.im;
+
+    if (isZeroFraction(im) && !isZeroFraction(re)) {
+      const sign = re.num < 0n ? -1 : 1;
+      return {
+        unit: sign < 0 ? { re: -1, im: 0 } : { re: 1, im: 0 },
+        magnitude: { num: absBigInt(re.num), den: re.den },
+      };
+    }
+
+    if (isZeroFraction(re) && !isZeroFraction(im)) {
+      const sign = im.num < 0n ? -1 : 1;
+      return {
+        unit: sign < 0 ? { re: 0, im: -1 } : { re: 0, im: 1 },
+        magnitude: { num: absBigInt(im.num), den: im.den },
+      };
+    }
+  }
+
   const real = intOrRatParts(baseExpr);
   if (real) {
     const absVal = absBigInt(real.num);
