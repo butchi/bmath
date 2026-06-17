@@ -79,6 +79,16 @@ describe("utility functions", () => {
     expect(toComplex(power(int(-4n), rat(3n, 2n)))).toEqual({ re: 0, im: -8 });
   });
 
+  test("toComplex with exact composed exponent expression on unit root", () => {
+    const exp = plus(rat(1n, 2n), rat(1n, 2n));
+    expect(toComplex(power(int(-1n), exp))).toEqual({ re: -1, im: 0 });
+  });
+
+  test("toComplex with exact composed exponent expression on negative real", () => {
+    const exp = times(rat(1n, 2n), int(3n));
+    expect(toComplex(power(int(-4n), exp))).toEqual({ re: 0, im: -8 });
+  });
+
   test("toExpression with rational", () => {
     const result = toExpression(rat(1n, 2n));
     expect(result).toBe("(1/2)");

@@ -70,15 +70,11 @@ function exactPositiveRationalPower(base: RationalParts, expExpr: Expr): Rationa
     return null;
   }
 
-  if (expExpr.kind === "Integer") {
-    return powRationalByInteger(base, expExpr.value);
-  }
-
-  if (expExpr.kind !== "Rational") {
+  const exp = exprToFraction(expExpr);
+  if (!exp) {
     return null;
   }
 
-  const exp = normalizeFraction(expExpr.num, expExpr.den);
   if (exp.den <= 0n) {
     return null;
   }
@@ -121,12 +117,46 @@ function mulFraction(a: RationalParts, b: RationalParts): RationalParts {
   return normalizeFraction(a.num * b.num, a.den * b.den);
 }
 
+function addFraction(a: RationalParts, b: RationalParts): RationalParts {
+  return normalizeFraction(a.num * b.den + b.num * a.den, a.den * b.den);
+}
+
 function exprToFraction(e: Expr): RationalParts | null {
   if (e.kind === "Integer") {
     return { num: e.value, den: 1n };
   }
   if (e.kind === "Rational") {
     return normalizeFraction(e.num, e.den);
+  }
+  if (e.kind === "Plus") {
+    let acc: RationalParts = { num: 0n, den: 1n };
+    for (const term of e.terms) {
+      const t = exprToFraction(term);
+      if (!t) {
+        return null;
+      }
+      acc = addFraction(acc, t);
+    }
+    return acc;
+  }
+  if (e.kind === "Times") {
+    let acc: RationalParts = { num: 1n, den: 1n };
+    for (const factor of e.factors) {
+      const f = exprToFraction(factor);
+      if (!f) {
+        return null;
+      }
+      acc = mulFraction(acc, f);
+    }
+    return acc;
+  }
+  if (e.kind === "Power") {
+    const base = exprToFraction(e.base);
+    const exp = exprToFraction(e.exp);
+    if (!base || !exp || exp.den !== 1n) {
+      return null;
+    }
+    return powRationalByInteger(base, exp.num);
   }
   return null;
 }
@@ -191,12 +221,13 @@ function powRationalByInteger(base: RationalParts, exp: bigint): RationalParts {
 
 function exactRealRationalPower(baseExpr: Expr, expExpr: Expr): ComplexNumber | null {
   const base = intOrRatParts(baseExpr);
-  if (!base || expExpr.kind !== "Rational") {
+  const exp = exprToFraction(expExpr);
+  if (!base || !exp) {
     return null;
   }
 
-  const p = expExpr.num;
-  const q = expExpr.den;
+  const p = exp.num;
+  const q = exp.den;
 
   if (q <= 0n) {
     return null;
