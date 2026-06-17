@@ -16,5 +16,8 @@
   "main": "index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "tsx": "^4.22.4"
   }
 }
