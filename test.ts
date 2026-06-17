@@ -99,6 +99,16 @@ describe("utility functions", () => {
     expect(toComplex(power(base, rat(2n, 1n)))).toEqual({ re: -4, im: 0 });
   });
 
+  test("toComplex with exact nested rational-power base expression", () => {
+    const base = times(power(int(-4n), rat(1n, 2n)), int(3n));
+    expect(toComplex(power(base, int(2n)))).toEqual({ re: -36, im: 0 });
+  });
+
+  test("toComplex with exact nested rational-power base and outer rational exponent", () => {
+    const base = power(int(-4n), rat(1n, 2n));
+    expect(toComplex(power(base, rat(3n, 1n)))).toEqual({ re: 0, im: -8 });
+  });
+
   test("toExpression with rational", () => {
     const result = toExpression(rat(1n, 2n));
     expect(result).toBe("(1/2)");

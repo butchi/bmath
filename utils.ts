@@ -196,6 +196,17 @@ function powComplexFractionByInteger(base: ComplexRational, exp: bigint): Comple
   return invComplexFraction(result);
 }
 
+function complexNumberToComplexFraction(value: ComplexNumber): ComplexRational | null {
+  if (!Number.isInteger(value.re) || !Number.isInteger(value.im)) {
+    return null;
+  }
+
+  return {
+    re: { num: BigInt(value.re), den: 1n },
+    im: { num: BigInt(value.im), den: 1n },
+  };
+}
+
 function exprToFraction(e: Expr): RationalParts | null {
   if (e.kind === "Integer") {
     return { num: e.value, den: 1n };
@@ -291,10 +302,16 @@ function exprToComplexFraction(e: Expr): ComplexRational | null {
   if (e.kind === "Power") {
     const base = exprToComplexFraction(e.base);
     const exp = exprToFraction(e.exp);
-    if (!base || !exp || exp.den !== 1n) {
-      return null;
+    if (base && exp && exp.den === 1n) {
+      return powComplexFractionByInteger(base, exp.num);
     }
-    return powComplexFractionByInteger(base, exp.num);
+
+    const exactAxis = exactAxisUnitMagnitudePower(e.base, e.exp);
+    if (exactAxis) {
+      return complexNumberToComplexFraction(exactAxis);
+    }
+
+    return null;
   }
 
   return null;
