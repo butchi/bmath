@@ -196,17 +196,6 @@ function powComplexFractionByInteger(base: ComplexRational, exp: bigint): Comple
   return invComplexFraction(result);
 }
 
-function complexNumberToComplexFraction(value: ComplexNumber): ComplexRational | null {
-  if (!Number.isInteger(value.re) || !Number.isInteger(value.im)) {
-    return null;
-  }
-
-  return {
-    re: { num: BigInt(value.re), den: 1n },
-    im: { num: BigInt(value.im), den: 1n },
-  };
-}
-
 function exprToFraction(e: Expr): RationalParts | null {
   if (e.kind === "Integer") {
     return { num: e.value, den: 1n };
@@ -306,9 +295,9 @@ function exprToComplexFraction(e: Expr): ComplexRational | null {
       return powComplexFractionByInteger(base, exp.num);
     }
 
-    const exactAxis = exactAxisUnitMagnitudePower(e.base, e.exp);
+    const exactAxis = exactAxisUnitMagnitudePowerAsFraction(e.base, e.exp);
     if (exactAxis) {
-      return complexNumberToComplexFraction(exactAxis);
+      return exactAxis;
     }
 
     return null;
@@ -489,6 +478,41 @@ function exactAxisUnitMagnitudePower(baseExpr: Expr, expExpr: Expr): ComplexNumb
     re: unitPow.re * amp,
     im: unitPow.im * amp,
   };
+}
+
+function exactAxisUnitMagnitudePowerAsFraction(baseExpr: Expr, expExpr: Expr): ComplexRational | null {
+  const axis = axisUnitAndMagnitude(baseExpr);
+  if (!axis) {
+    return null;
+  }
+
+  const unitPow = exactUnitRootPower(axis.unit, expExpr);
+  if (!unitPow) {
+    return null;
+  }
+
+  const magPow = exactPositiveRationalPower(axis.magnitude, expExpr);
+  if (!magPow) {
+    return null;
+  }
+
+  const zero: RationalParts = { num: 0n, den: 1n };
+  const negativeMag = normalizeFraction(-magPow.num, magPow.den);
+
+  if (unitPow.re === 1 && unitPow.im === 0) {
+    return { re: magPow, im: zero };
+  }
+  if (unitPow.re === -1 && unitPow.im === 0) {
+    return { re: negativeMag, im: zero };
+  }
+  if (unitPow.re === 0 && unitPow.im === 1) {
+    return { re: zero, im: magPow };
+  }
+  if (unitPow.re === 0 && unitPow.im === -1) {
+    return { re: zero, im: negativeMag };
+  }
+
+  return null;
 }
 
 function asComplexOrZero(n: Expr | MorphionForm): ComplexNumber {
