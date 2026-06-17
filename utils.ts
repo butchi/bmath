@@ -151,6 +151,13 @@ function mulComplexFraction(a: ComplexRational, b: ComplexRational): ComplexRati
   };
 }
 
+function mulComplexFractionByI(value: ComplexRational): ComplexRational {
+  return {
+    re: normalizeFraction(-value.im.num, value.im.den),
+    im: value.re,
+  };
+}
+
 function invComplexFraction(a: ComplexRational): ComplexRational | null {
   const denom = addFraction(mulFraction(a.re, a.re), mulFraction(a.im, a.im));
   if (isZeroFraction(denom)) {
@@ -250,12 +257,12 @@ function exprToComplexFraction(e: Expr): ComplexRational | null {
   }
 
   if (e.kind === "Complex") {
-    const re = exprToFraction(e.re);
-    const im = exprToFraction(e.im);
+    const re = exprToComplexFraction(e.re);
+    const im = exprToComplexFraction(e.im);
     if (!re || !im) {
       return null;
     }
-    return { re, im };
+    return addComplexFraction(re, mulComplexFractionByI(im));
   }
 
   if (e.kind === "Plus") {
@@ -606,9 +613,11 @@ function toComplex(n: Expr | MorphionForm): { re: number; im: number } | Morphio
   } else if (n.kind === "GaussianInteger") {
     return gaussianToComplex(n);
   } else if (n.kind === "Complex") {
+    const rePart = asComplexOrZero(n.re);
+    const imPart = asComplexOrZero(n.im);
     return {
-      re: toNum(n.re),
-      im: toNum(n.im),
+      re: rePart.re - imPart.im,
+      im: rePart.im + imPart.re,
     };
   } else if (n.kind === "MorphionForm") {
     return n; // MorphionFormはそのまま返す

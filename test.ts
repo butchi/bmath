@@ -119,6 +119,16 @@ describe("utility functions", () => {
     expect(toComplex(power(base, int(-1n)))).toEqual({ re: 0, im: -4 });
   });
 
+  test("toComplex with recursively exact complex real part", () => {
+    const base = complex(power(int(-1n), rat(1n, 2n)), int(0n));
+    expect(toComplex(power(base, int(2n)))).toEqual({ re: -1, im: 0 });
+  });
+
+  test("toComplex with recursively exact complex imaginary part", () => {
+    const base = complex(int(0n), power(int(-1n), rat(1n, 2n)));
+    expect(toComplex(base)).toEqual({ re: -1, im: 0 });
+  });
+
   test("toExpression with rational", () => {
     const result = toExpression(rat(1n, 2n));
     expect(result).toBe("(1/2)");
