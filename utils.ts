@@ -9,6 +9,8 @@ function toNum(n: Expr | MorphionForm): number {
     return Number(n.value);
   } else if (n.kind === "Rational") {
     return Number(n.num) / Number(n.den);
+  } else if (n.kind === "GaussianInteger") {
+    return NaN; // ガウス整数は数値に変換できないのでNaNを返す
   } else if (n.kind === "Complex") {
     return NaN; // 複素数は数値に変換できないのでNaNを返す
   } else if (n.kind === "Power") {
@@ -50,6 +52,10 @@ function toComplex(n: Expr | MorphionForm): { re: number; im: number } | Morphio
       re: toNum(n.re),
       im: toNum(n.im),
     };
+  } else if (n.kind === "MorphionForm") {
+    return n; // MorphionFormはそのまま返す
+  } else if (n.kind === "Symbol") {
+    return { re: NaN, im: NaN }; // シンボルは複素数に変換できないのでNaNを返す
   } else if (n.kind === "Power") {
     const baseCplx = toComplex(n.base);
     const baseCplxObj = (typeof baseCplx === "object" && "re" in baseCplx) ? baseCplx : { re: 0, im: 0 };
@@ -98,8 +104,6 @@ function toComplex(n: Expr | MorphionForm): { re: number; im: number } | Morphio
     }
     
     return { re, im };
-  } else if (n.kind === "Symbol") {
-    return { re: NaN, im: NaN }; // シンボルは複素数に変換できないのでNaNを返す
   } else {
     throw new Error("Unsupported Morphion type for toComplex");
   }
