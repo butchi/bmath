@@ -4,145 +4,155 @@ import { int, sym, rat, power, complex, plus, times } from "./expr";
 import { toJson, toNum, toExpression, toComplex, toMorphionForm } from "./utils";
 
 describe("utility functions", () => {
-  test("plus with multiple integers", () => {
-    const result = plus(int(1n), int(2n), int(3n));
-    expect(toNum(result)).toBe(6);
+  describe("numeric basics", () => {
+    test("plus with multiple integers", () => {
+      const result = plus(int(1n), int(2n), int(3n));
+      expect(toNum(result)).toBe(6);
+    });
+
+    test("times with multiple integers", () => {
+      const result = times(int(4n), int(5n), int(6n));
+      expect(toNum(result)).toBe(120);
+    });
+
+    test("power of integers", () => {
+      const result = power(int(2n), int(3n));
+      expect(toNum(result)).toBe(8);
+    });
   });
 
-  test("times with multiple integers", () => {
-    const result = times(int(4n), int(5n), int(6n));
-    expect(toNum(result)).toBe(120);
+  describe("toComplex exact branches", () => {
+    test("toComplex with integer", () => {
+      expect(toComplex(int(5n))).toEqual({ re: 5, im: 0 });
+    });
+
+    test("toComplex with rational", () => {
+      expect(toComplex(rat(1n, 2n))).toEqual({ re: 0.5, im: 0 });
+    });
+
+    test("toComplex with complex number", () => {
+      expect(toComplex(complex(int(1n), int(2n)))).toEqual({ re: 1, im: 2 });
+    });
+
+    test("toComplex with power", () => {
+      expect(toComplex(power(int(2n), int(3n)))).toEqual({ re: 8, im: 0 });
+    });
+
+    test("toComplex with negative power", () => {
+      expect(toComplex(power(int(-1n), int(2n)))).toEqual({ re: 1, im: 0 });
+    });
+
+    test("toComplex with square root of -1", () => {
+      expect(toComplex(power(int(-1n), rat(1n, 2n)))).toEqual({ re: 0, im: 1 });
+    });
+
+    test("toComplex with square root of 2", () => {
+      const result = toComplex(power(int(2n), rat(1n, 2n)));
+      if (typeof result === "object" && "re" in result && "im" in result) {
+        expect(result.re).toBeCloseTo(1.414213562373095);
+        expect(result.im).toBe(0);
+      }
+    });
+
+    test("toComplex with odd root of negative integer", () => {
+      expect(toComplex(power(int(-8n), rat(1n, 3n)))).toEqual({ re: -2, im: 0 });
+    });
+
+    test("toComplex with exact rational power", () => {
+      expect(toComplex(power(rat(16n, 81n), rat(3n, 4n)))).toEqual({ re: 8 / 27, im: 0 });
+    });
+
+    test("toComplex with exact negative rational power", () => {
+      expect(toComplex(power(int(-8n), rat(-2n, 3n)))).toEqual({ re: 1 / 4, im: 0 });
+    });
   });
 
-  test("power of integers", () => {
-    const result = power(int(2n), int(3n));
-    expect(toNum(result)).toBe(8);
+  describe("toComplex axis and phase cases", () => {
+    test("toComplex with exact rational phase on -1", () => {
+      expect(toComplex(power(int(-1n), rat(3n, 2n)))).toEqual({ re: 0, im: -1 });
+    });
+
+    test("toComplex with exact rational phase on i", () => {
+      expect(toComplex(power(complex(int(0n), int(1n)), rat(3n, 1n)))).toEqual({ re: 0, im: -1 });
+    });
+
+    test("toComplex with exact square root on negative real", () => {
+      expect(toComplex(power(int(-4n), rat(1n, 2n)))).toEqual({ re: 0, im: 2 });
+    });
+
+    test("toComplex with exact 3/2 power on negative real", () => {
+      expect(toComplex(power(int(-4n), rat(3n, 2n)))).toEqual({ re: 0, im: -8 });
+    });
   });
 
-  test("toComplex with integer", () => {
-    expect(toComplex(int(5n))).toEqual({ re: 5, im: 0 });
+  describe("toComplex composed exact expressions", () => {
+    test("toComplex with exact composed exponent expression on unit root", () => {
+      const exp = plus(rat(1n, 2n), rat(1n, 2n));
+      expect(toComplex(power(int(-1n), exp))).toEqual({ re: -1, im: 0 });
+    });
+
+    test("toComplex with exact composed exponent expression on negative real", () => {
+      const exp = times(rat(1n, 2n), int(3n));
+      expect(toComplex(power(int(-4n), exp))).toEqual({ re: 0, im: -8 });
+    });
+
+    test("toComplex with exact composed base expression on negative real", () => {
+      const base = times(int(-1n), int(4n));
+      expect(toComplex(power(base, rat(3n, 2n)))).toEqual({ re: 0, im: -8 });
+    });
+
+    test("toComplex with exact composed base expression on pure imaginary", () => {
+      const base = plus(complex(int(0n), int(2n)), int(0n));
+      expect(toComplex(power(base, rat(2n, 1n)))).toEqual({ re: -4, im: 0 });
+    });
+
+    test("toComplex with exact nested rational-power base expression", () => {
+      const base = times(power(int(-4n), rat(1n, 2n)), int(3n));
+      expect(toComplex(power(base, int(2n)))).toEqual({ re: -36, im: 0 });
+    });
+
+    test("toComplex with exact nested rational-power base and outer rational exponent", () => {
+      const base = power(int(-4n), rat(1n, 2n));
+      expect(toComplex(power(base, rat(3n, 1n)))).toEqual({ re: 0, im: -8 });
+    });
+
+    test("toComplex with exact nested rational-power base yielding rational imaginary value", () => {
+      const base = times(power(rat(-1n, 4n), rat(1n, 2n)), int(2n));
+      expect(toComplex(power(base, int(2n)))).toEqual({ re: -1, im: 0 });
+    });
+
+    test("toComplex with exact inverse of rational imaginary nested base", () => {
+      const base = power(rat(-1n, 16n), rat(1n, 2n));
+      expect(toComplex(power(base, int(-1n)))).toEqual({ re: 0, im: -4 });
+    });
+
+    test("toComplex with recursively exact complex real part", () => {
+      const base = complex(power(int(-1n), rat(1n, 2n)), int(0n));
+      expect(toComplex(power(base, int(2n)))).toEqual({ re: -1, im: 0 });
+    });
+
+    test("toComplex with recursively exact complex imaginary part", () => {
+      const base = complex(int(0n), power(int(-1n), rat(1n, 2n)));
+      expect(toComplex(base)).toEqual({ re: -1, im: 0 });
+    });
   });
 
-  test("toComplex with rational", () => {
-    expect(toComplex(rat(1n, 2n))).toEqual({ re: 0.5, im: 0 });
-  });
+  describe("format conversions", () => {
+    test("toExpression with rational", () => {
+      const result = toExpression(rat(1n, 2n));
+      expect(result).toBe("(1/2)");
+    });
 
-  test("toComplex with complex number", () => {
-    expect(toComplex(complex(int(1n), int(2n)))).toEqual({ re: 1, im: 2 });
-  });
+    test("toExpression with square root", () => {
+      const result = toExpression(power(int(2n), rat(1n, 2n)));
+      expect(result).toContain("2");
+    });
 
-  test("toComplex with power", () => {
-    expect(toComplex(power(int(2n), int(3n)))).toEqual({ re: 8, im: 0 });
-  });
-
-  test("toComplex with negative power", () => {
-    expect(toComplex(power(int(-1n), int(2n)))).toEqual({ re: 1, im: 0 });
-  });
-
-  test("toComplex with square root of -1", () => {
-    expect(toComplex(power(int(-1n), rat(1n, 2n)))).toEqual({ re: 0, im: 1 });
-  });
-
-  test("toComplex with square root of 2", () => {
-    const result = toComplex(power(int(2n), rat(1n, 2n)));
-    if (typeof result === "object" && "re" in result && "im" in result) {
-      expect(result.re).toBeCloseTo(1.414213562373095);
-      expect(result.im).toBe(0);
-    }
-  });
-
-  test("toComplex with odd root of negative integer", () => {
-    expect(toComplex(power(int(-8n), rat(1n, 3n)))).toEqual({ re: -2, im: 0 });
-  });
-
-  test("toComplex with exact rational power", () => {
-    expect(toComplex(power(rat(16n, 81n), rat(3n, 4n)))).toEqual({ re: 8 / 27, im: 0 });
-  });
-
-  test("toComplex with exact negative rational power", () => {
-    expect(toComplex(power(int(-8n), rat(-2n, 3n)))).toEqual({ re: 1 / 4, im: 0 });
-  });
-
-  test("toComplex with exact rational phase on -1", () => {
-    expect(toComplex(power(int(-1n), rat(3n, 2n)))).toEqual({ re: 0, im: -1 });
-  });
-
-  test("toComplex with exact rational phase on i", () => {
-    expect(toComplex(power(complex(int(0n), int(1n)), rat(3n, 1n)))).toEqual({ re: 0, im: -1 });
-  });
-
-  test("toComplex with exact square root on negative real", () => {
-    expect(toComplex(power(int(-4n), rat(1n, 2n)))).toEqual({ re: 0, im: 2 });
-  });
-
-  test("toComplex with exact 3/2 power on negative real", () => {
-    expect(toComplex(power(int(-4n), rat(3n, 2n)))).toEqual({ re: 0, im: -8 });
-  });
-
-  test("toComplex with exact composed exponent expression on unit root", () => {
-    const exp = plus(rat(1n, 2n), rat(1n, 2n));
-    expect(toComplex(power(int(-1n), exp))).toEqual({ re: -1, im: 0 });
-  });
-
-  test("toComplex with exact composed exponent expression on negative real", () => {
-    const exp = times(rat(1n, 2n), int(3n));
-    expect(toComplex(power(int(-4n), exp))).toEqual({ re: 0, im: -8 });
-  });
-
-  test("toComplex with exact composed base expression on negative real", () => {
-    const base = times(int(-1n), int(4n));
-    expect(toComplex(power(base, rat(3n, 2n)))).toEqual({ re: 0, im: -8 });
-  });
-
-  test("toComplex with exact composed base expression on pure imaginary", () => {
-    const base = plus(complex(int(0n), int(2n)), int(0n));
-    expect(toComplex(power(base, rat(2n, 1n)))).toEqual({ re: -4, im: 0 });
-  });
-
-  test("toComplex with exact nested rational-power base expression", () => {
-    const base = times(power(int(-4n), rat(1n, 2n)), int(3n));
-    expect(toComplex(power(base, int(2n)))).toEqual({ re: -36, im: 0 });
-  });
-
-  test("toComplex with exact nested rational-power base and outer rational exponent", () => {
-    const base = power(int(-4n), rat(1n, 2n));
-    expect(toComplex(power(base, rat(3n, 1n)))).toEqual({ re: 0, im: -8 });
-  });
-
-  test("toComplex with exact nested rational-power base yielding rational imaginary value", () => {
-    const base = times(power(rat(-1n, 4n), rat(1n, 2n)), int(2n));
-    expect(toComplex(power(base, int(2n)))).toEqual({ re: -1, im: 0 });
-  });
-
-  test("toComplex with exact inverse of rational imaginary nested base", () => {
-    const base = power(rat(-1n, 16n), rat(1n, 2n));
-    expect(toComplex(power(base, int(-1n)))).toEqual({ re: 0, im: -4 });
-  });
-
-  test("toComplex with recursively exact complex real part", () => {
-    const base = complex(power(int(-1n), rat(1n, 2n)), int(0n));
-    expect(toComplex(power(base, int(2n)))).toEqual({ re: -1, im: 0 });
-  });
-
-  test("toComplex with recursively exact complex imaginary part", () => {
-    const base = complex(int(0n), power(int(-1n), rat(1n, 2n)));
-    expect(toComplex(base)).toEqual({ re: -1, im: 0 });
-  });
-
-  test("toExpression with rational", () => {
-    const result = toExpression(rat(1n, 2n));
-    expect(result).toBe("(1/2)");
-  });
-
-  test("toExpression with square root", () => {
-    const result = toExpression(power(int(2n), rat(1n, 2n)));
-    expect(result).toContain("2");
-  });
-
-  test("toMorphionForm with rational", () => {
-    const result = toMorphionForm(rat(1n, 2n));
-    expect(result.kind).toBe("MorphionForm");
-    expect(result.base).toEqual(int(2n));
+    test("toMorphionForm with rational", () => {
+      const result = toMorphionForm(rat(1n, 2n));
+      expect(result.kind).toBe("MorphionForm");
+      expect(result.base).toEqual(int(2n));
+    });
   });
 });
 
