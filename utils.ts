@@ -37,6 +37,8 @@ function toNum(n: Expr | MorphionForm): number {
     return result;
   } else if (n.kind === "Symbol") {
     return NaN; // シンボルは数値に変換できないのでNaNを返す
+  } else if (n.kind === "Call") {
+    return NaN; // 関数呼び出しは数値に変換できないのでNaNを返す
   } else {
     throw new Error("Unsupported Morphion type for toNum");
   }
@@ -141,6 +143,8 @@ function toComplex(n: Expr | MorphionForm): { re: number; im: number } | Morphio
     }
     
     return { re, im };
+  } else if (n.kind === "Call") {
+    return { re: NaN, im: NaN }; // 関数呼び出しは複素数に変換できないのでNaNを返す
   } else {
     throw new Error("Unsupported Morphion type for toComplex");
   }
@@ -163,6 +167,8 @@ function toExpression(n: Expr | MorphionForm): string {
     return Array.from(n.terms.values()).map(({ key, coeff }: { key: Expr; coeff: Expr }) => `(${toExpression(coeff)}) * (${toExpression(n.base)}^(${toExpression(key)}))`).join(" + ");
   } else if (n.kind === "Symbol") {
     return n.name;
+  } else if (n.kind === "Call") {
+    return `${n.fn}(${toExpression(n.arg)})`;
   } else {
     throw new Error("Unsupported Morphion type for toExpression");
   }
@@ -202,6 +208,8 @@ function toMorphionForm(n: Expr): MorphionForm {
     }
   } else if (n.kind === "Symbol") {
     return morphion(n, [{ key: int(0n), coeff: int(1n) }]);
+  } else if (n.kind === "Call") {
+    throw new Error(`Cannot morphionize Call: ${n.fn}`);
   } else {
     throw new Error(`Cannot morphionize ${n.kind}`);
   }

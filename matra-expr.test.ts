@@ -1,5 +1,6 @@
 /// <reference types="jest" />
-import { int, plus, power, sym, times } from "./expr"
+import { int, plus, power, sym, times, call } from "./expr"
+import { toExpression } from "./utils"
 import {
   exprToFormulaNode,
   exprToMatraExprNode,
@@ -114,7 +115,27 @@ describe("matra-expr bridge", () => {
     expect(Array.from(morphion.terms.values())).toEqual([{ key: int(2n), coeff: int(1n) }])
   })
 
-  test("unsupported TeX function throws", () => {
-    expect(() => texToExpr("\\sin x")).toThrow("Unsupported TeX math node for Expr conversion: Sin")
+  test("TeX sin/cos -> Expr Call (not an error anymore)", () => {
+    expect(texToExpr("\\sin x")).toEqual(call("sin", sym("x")))
+    expect(texToExpr("\\cos(x)")).toEqual(call("cos", sym("x")))
+  })
+
+  test("Call construction", () => {
+    const expr = call("sin", sym("x"))
+    expect(expr).toEqual({ kind: "Call", fn: "sin", arg: sym("x") })
+  })
+
+  test("Call to expression string", () => {
+    const expr = call("sin", plus(sym("x"), int(1n)))
+    expect(toExpression(expr)).toBe("sin(1 + x)")
+  })
+
+  test("Expr with Call -> Matra ExprNode", () => {
+    const expr = call("cos", sym("x"))
+    expect(exprToMatraExprNode(expr)).toEqual(["Call", {}, [["Symbol", { name: "cos" }, []], ["Symbol", { name: "x" }, []]]])
+  })
+
+  test("TeX sin in complex expression", () => {
+    expect(texToExpr("\\sin x + 1")).toEqual(plus(int(1n), call("sin", sym("x"))))
   })
 })

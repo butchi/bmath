@@ -68,6 +68,8 @@ function normalize(m: Expr): Expr {
       base,
       exp,
     };
+  } else if (m.kind === "Call") {
+    return m;
   } else {
     return m;
   }
@@ -140,4 +142,10 @@ const times = (...factors: Expr[]): Expr => {
   });
 }
 
-export { int, sym, rat, gi, complex, power, plus, times, normalizeRational };
+const call = (fn: string, arg: Expr): Expr => ({
+  kind: "Call",
+  fn,
+  arg,
+});
+
+export { int, sym, rat, gi, complex, power, plus, times, call, normalizeRational };

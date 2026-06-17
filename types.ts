@@ -7,7 +7,8 @@ type Expr =
   | { kind: "Symbol"; name: string }
   | { kind: "Plus"; terms: Expr[] }
   | { kind: "Times"; factors: Expr[] }
-  | { kind: "Power"; base: Expr; exp: Expr };
+  | { kind: "Power"; base: Expr; exp: Expr }
+  | { kind: "Call"; fn: string; arg: Expr };
 
 // 第2層: モーフィオン標準形
 type MorphionForm = {

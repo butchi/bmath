@@ -2,15 +2,15 @@ import type { Expr } from "./types"
 import type { MorphionForm } from "./types"
 import type { MatraNode } from "./ast-to-tex"
 import { texToAst } from "./tex-to-ast"
-import { int, plus, power, sym, times } from "./expr"
+import { int, plus, power, sym, times, call } from "./expr"
 import { toMorphionForm } from "./utils"
 
-type ExprMatraTag = "Integer" | "Symbol" | "Plus" | "Times" | "Power"
+type ExprMatraTag = "Integer" | "Symbol" | "Plus" | "Times" | "Power" | "Call"
 type ExprMatraNode = [ExprMatraTag, Record<string, any>, ExprMatraNode[]]
 type FormulaNode = ["Formula", Record<string, any>, [ExprMatraNode]]
 
 function isExprMatraNode(node: MatraNode): node is ExprMatraNode {
-  return node[0] === "Integer" || node[0] === "Symbol" || node[0] === "Plus" || node[0] === "Times" || node[0] === "Power"
+  return node[0] === "Integer" || node[0] === "Symbol" || node[0] === "Plus" || node[0] === "Times" || node[0] === "Power" || node[0] === "Call"
 }
 
 function exprToMatraExprNode(expr: Expr): ExprMatraNode {
@@ -32,6 +32,10 @@ function exprToMatraExprNode(expr: Expr): ExprMatraNode {
 
   if (expr.kind === "Power") {
     return ["Power", {}, [exprToMatraExprNode(expr.base), exprToMatraExprNode(expr.exp)]]
+  }
+
+  if (expr.kind === "Call") {
+    return ["Call", {}, [["Symbol", { name: expr.fn }, []], exprToMatraExprNode(expr.arg)]]
   }
 
   throw new Error(`Unsupported Expr kind for Matra conversion: ${expr.kind}`)
@@ -70,6 +74,21 @@ function matraExprNodeToExpr(node: ExprMatraNode): Expr {
       kind: "Power",
       base: matraExprNodeToExpr(body[0]),
       exp: matraExprNodeToExpr(body[1]),
+    }
+  }
+
+  if (tag === "Call") {
+    if (body.length !== 2) {
+      throw new Error("Invalid Call node: body length must be 2")
+    }
+    const fnNode = body[0]
+    if (fnNode[0] !== "Symbol") {
+      throw new Error("Call function must be a Symbol node")
+    }
+    return {
+      kind: "Call",
+      fn: String((fnNode as any)[1].name),
+      arg: matraExprNodeToExpr(body[1]),
     }
   }
 
@@ -153,6 +172,24 @@ function texMathNodeToExpr(node: MatraNode): Expr {
       texMathNodeToExpr(body[0] as MatraNode),
       power(texMathNodeToExpr(body[1] as MatraNode), int(-1n)),
     )
+  }
+
+  if (tag === "Sin" || tag === "Cos") {
+    if (body.length !== 1) {
+      throw new Error(`Invalid ${tag} node: body length must be 1`)
+    }
+    return call(tag.toLowerCase(), texMathNodeToExpr(body[0] as MatraNode))
+  }
+
+  if (tag === "Call") {
+    if (body.length !== 2) {
+      throw new Error("Invalid Call node: body length must be 2")
+    }
+    const fn = body[0] as MatraNode
+    if (fn[0] !== "Var") {
+      throw new Error("Call function must be a Var node")
+    }
+    return call(String(fn[2][0]), texMathNodeToExpr(body[1] as MatraNode))
   }
 
   throw new Error(`Unsupported TeX math node for Expr conversion: ${tag}`)
