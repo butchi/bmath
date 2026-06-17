@@ -4,7 +4,7 @@ function normalize(m: Expr): Expr {
   if (m.kind === "Plus") {
     // 全ての整数項を合計
     let integerSum = 0n;
-    const otherTerms = [];
+    const otherTerms: Expr[] = [];
     for (const term of m.terms) {
       if (term.kind === "Integer") {
         integerSum += term.value;
@@ -26,7 +26,7 @@ function normalize(m: Expr): Expr {
   } else if (m.kind === "Times") {
     // 全ての整数項を乗算
     let integerProduct = 1n;
-    const otherFactors = [];
+    const otherFactors: Expr[] = [];
     for (const factor of m.factors) {
       if (factor.kind === "Integer") {
         integerProduct *= factor.value;

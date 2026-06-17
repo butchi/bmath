@@ -2,22 +2,15 @@ import { Expr, MorphionForm } from "./types";
 import { replacer } from "./json";
 import { int, sym, plus, times } from "./expr";
 
+type MorphionTerm = { key: Expr; coeff: Expr };
+
 function morphion(
   base: Expr,
-  entries: Array<{ key: Expr; coeff: Expr }>
+  entries: MorphionTerm[]
 ): MorphionForm {
-  const terms = new Map<string, { key: Expr; coeff: Expr }>();
+  const terms = new Map<string, MorphionTerm>();
   for (const entry of entries) {
-    const keyStr = JSON.stringify(entry.key, replacer);
-    if (terms.has(keyStr)) {
-      const existing = terms.get(keyStr)!;
-      terms.set(keyStr, {
-        key: entry.key,
-        coeff: plus(existing.coeff, entry.coeff),
-      });
-    } else {
-      terms.set(keyStr, entry);
-    }
+    mergeTerm(terms, entry);
   }
   return { kind: "MorphionForm", base, terms };
 }
@@ -35,71 +28,66 @@ function keyOf(e: Expr): string {
   return JSON.stringify(e, replacer);
 }
 
+function mergeTerm(terms: Map<string, MorphionTerm>, term: MorphionTerm): void {
+  const keyStr = keyOf(term.key);
+  if (terms.has(keyStr)) {
+    const existing = terms.get(keyStr)!;
+    terms.set(keyStr, {
+      key: term.key,
+      coeff: plus(existing.coeff, term.coeff),
+    });
+    return;
+  }
+
+  terms.set(keyStr, term);
+}
+
+function assertSameBase(a: MorphionForm, b: MorphionForm, operation: "add" | "multiply"): Expr {
+  if (!sameExpr(a.base, b.base)) {
+    if (operation === "add") {
+      throw new Error("Cannot add MorphionForms with different bases");
+    }
+    throw new Error("Cannot multiply MorphionForms with different bases");
+  }
+
+  return a.base;
+}
+
 function sameExpr(a: Expr, b: Expr): boolean {
   return keyOf(a) === keyOf(b);
 }
 
 // same base only
 function addMorphionForms(a: MorphionForm, b: MorphionForm): MorphionForm {
-  if (sameExpr(a.base, b.base)) {
-    const base = a.base;
-    const terms = new Map<string, { key: Expr; coeff: Expr }>();
+  const base = assertSameBase(a, b, "add");
+  const terms = new Map<string, MorphionTerm>();
 
-    for (const { key, coeff } of a.terms.values()) {
-      const keyStr = JSON.stringify(key, replacer);
-      terms.set(keyStr, { key, coeff });
-    }
-
-    for (const { key, coeff } of b.terms.values()) {
-      const keyStr = JSON.stringify(key, replacer);
-      if (terms.has(keyStr)) {
-        const existing = terms.get(keyStr)!;
-        terms.set(keyStr, {
-          key,
-          coeff: plus(existing.coeff, coeff),
-        });
-      } else {
-        terms.set(keyStr, { key, coeff });
-      }
-    }
-
-    const entries = Array.from(terms.values());
-
-    return morphion(base, entries);
-  } else {
-    throw new Error("Cannot add MorphionForms with different bases");
+  for (const term of a.terms.values()) {
+    terms.set(keyOf(term.key), term);
   }
+
+  for (const term of b.terms.values()) {
+    mergeTerm(terms, term);
+  }
+
+  return morphion(base, Array.from(terms.values()));
 }
 
 // same base only
 function mulMorphionForms(a: MorphionForm, b: MorphionForm): MorphionForm {
-  if (sameExpr(a.base, b.base)) {
-    const base = a.base;
-    const terms = new Map<string, { key: Expr; coeff: Expr }>();
+  const base = assertSameBase(a, b, "multiply");
+  const terms = new Map<string, MorphionTerm>();
 
-    for (const { key: keyA, coeff: coeffA } of a.terms.values()) {
-      for (const { key: keyB, coeff: coeffB } of b.terms.values()) {
-        const newKey = plus(keyA, keyB);
-        const newCoeff = times(coeffA, coeffB);
-        const newKeyStr = JSON.stringify(newKey, replacer);
-        if (terms.has(newKeyStr)) {
-          const existing = terms.get(newKeyStr)!;
-          terms.set(newKeyStr, {
-            key: newKey,
-            coeff: plus(existing.coeff, newCoeff),
-          });
-        } else {
-          terms.set(newKeyStr, { key: newKey, coeff: newCoeff });
-        }
-      }
+  for (const { key: keyA, coeff: coeffA } of a.terms.values()) {
+    for (const { key: keyB, coeff: coeffB } of b.terms.values()) {
+      mergeTerm(terms, {
+        key: plus(keyA, keyB),
+        coeff: times(coeffA, coeffB),
+      });
     }
-
-    const entries = Array.from(terms.values());
-
-    return morphion(base, entries);
-  } else {
-    throw new Error("Cannot multiply MorphionForms with different bases");
   }
+
+  return morphion(base, Array.from(terms.values()));
 }
 
 export { morphion, poly, addMorphionForms, mulMorphionForms };
