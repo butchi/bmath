@@ -12,6 +12,10 @@ export {
 	parseFormula,
 	exprToMorphion,
 	formulaNodeToMorphion,
+	texMathNodeToExpr,
+	texToExpr,
+	texToFormulaNode,
+	texToMorphion,
 } from "./matra-expr";
 export { replacer } from "./json";
 export type { Expr, MorphionForm } from "./types";

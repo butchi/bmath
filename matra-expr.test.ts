@@ -7,6 +7,10 @@ import {
   formulaNodeToMorphion,
   matraExprNodeToExpr,
   parseFormula,
+  texMathNodeToExpr,
+  texToExpr,
+  texToFormulaNode,
+  texToMorphion,
   toFormulaNode,
 } from "./matra-expr"
 
@@ -84,5 +88,33 @@ describe("matra-expr bridge", () => {
     expect(morphion.kind).toBe("MorphionForm")
     expect(morphion.base).toEqual(sym("x"))
     expect(Array.from(morphion.terms.values())).toEqual([{ key: int(2n), coeff: int(1n) }])
+  })
+
+  test("TeX AST node -> Expr", () => {
+    const node = ["Pow", {}, [["Var", {}, ["x"]], ["Const", {}, ["2"]]]] as any
+    expect(texMathNodeToExpr(node)).toEqual(power(sym("x"), int(2n)))
+  })
+
+  test("TeX string -> Expr", () => {
+    expect(texToExpr("2x + y^{2}")).toEqual(plus(times(int(2n), sym("x")), power(sym("y"), int(2n))))
+  })
+
+  test("TeX string -> FormulaNode", () => {
+    expect(texToFormulaNode("x^{2}")).toEqual([
+      "Formula",
+      {},
+      [["Power", {}, [["Symbol", { name: "x" }, []], ["Integer", { value: "2" }, []]]]],
+    ])
+  })
+
+  test("TeX string -> MorphionForm", () => {
+    const morphion = texToMorphion("x^{2}")
+    expect(morphion.kind).toBe("MorphionForm")
+    expect(morphion.base).toEqual(sym("x"))
+    expect(Array.from(morphion.terms.values())).toEqual([{ key: int(2n), coeff: int(1n) }])
+  })
+
+  test("unsupported TeX function throws", () => {
+    expect(() => texToExpr("\\sin x")).toThrow("Unsupported TeX math node for Expr conversion: Sin")
   })
 })

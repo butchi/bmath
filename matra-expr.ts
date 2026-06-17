@@ -1,6 +1,8 @@
 import type { Expr } from "./types"
 import type { MorphionForm } from "./types"
 import type { MatraNode } from "./ast-to-tex"
+import { texToAst } from "./tex-to-ast"
+import { int, plus, power, sym, times } from "./expr"
 import { toMorphionForm } from "./utils"
 
 type ExprMatraTag = "Integer" | "Symbol" | "Plus" | "Times" | "Power"
@@ -107,12 +109,73 @@ function parseFormula(node: MatraNode): Expr {
   return formulaNodeToExpr(node)
 }
 
+function texMathNodeToExpr(node: MatraNode): Expr {
+  const [tag, _props, body] = node
+
+  if (tag === "Const") {
+    const val = String(body[0])
+    if (/^-?\d+$/.test(val)) {
+      return int(BigInt(val))
+    }
+    if (val === "E") {
+      return sym("e")
+    }
+    if (val === "Pi") {
+      return sym("pi")
+    }
+    throw new Error(`Unsupported Const value for Expr conversion: ${val}`)
+  }
+
+  if (tag === "Var") {
+    return sym(String(body[0]))
+  }
+
+  if (tag === "Add") {
+    return plus(...(body as MatraNode[]).map(texMathNodeToExpr))
+  }
+
+  if (tag === "Mul") {
+    return times(...(body as MatraNode[]).map(texMathNodeToExpr))
+  }
+
+  if (tag === "Pow") {
+    if (body.length !== 2) {
+      throw new Error("Invalid Pow node: body length must be 2")
+    }
+    return power(texMathNodeToExpr(body[0] as MatraNode), texMathNodeToExpr(body[1] as MatraNode))
+  }
+
+  if (tag === "Div") {
+    if (body.length !== 2) {
+      throw new Error("Invalid Div node: body length must be 2")
+    }
+    return times(
+      texMathNodeToExpr(body[0] as MatraNode),
+      power(texMathNodeToExpr(body[1] as MatraNode), int(-1n)),
+    )
+  }
+
+  throw new Error(`Unsupported TeX math node for Expr conversion: ${tag}`)
+}
+
+function texToExpr(tex: string): Expr {
+  return texMathNodeToExpr(texToAst(tex))
+}
+
+function texToFormulaNode(tex: string): FormulaNode {
+  return exprToFormulaNode(texToExpr(tex))
+}
+
 function exprToMorphion(expr: Expr): MorphionForm {
   return toMorphionForm(expr)
 }
 
 function formulaNodeToMorphion(node: MatraNode): MorphionForm {
   return exprToMorphion(formulaNodeToExpr(node))
+}
+
+function texToMorphion(tex: string): MorphionForm {
+  return exprToMorphion(texToExpr(tex))
 }
 
 export {
@@ -122,7 +185,11 @@ export {
   formulaNodeToExpr,
   toFormulaNode,
   parseFormula,
+  texMathNodeToExpr,
+  texToExpr,
+  texToFormulaNode,
   exprToMorphion,
   formulaNodeToMorphion,
+  texToMorphion,
 }
 export type { ExprMatraNode, FormulaNode }
