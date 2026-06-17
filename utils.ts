@@ -60,9 +60,36 @@ function intOrRatParts(e: Expr): RationalParts | null {
     return { num: e.value, den: 1n };
   }
   if (e.kind === "Rational") {
-    return { num: e.num, den: e.den };
+    return normalizeFraction(e.num, e.den);
   }
   return null;
+}
+
+function exactPositiveRationalPower(base: RationalParts, expExpr: Expr): RationalParts | null {
+  if (base.num < 0n || base.den <= 0n) {
+    return null;
+  }
+
+  if (expExpr.kind === "Integer") {
+    return powRationalByInteger(base, expExpr.value);
+  }
+
+  if (expExpr.kind !== "Rational") {
+    return null;
+  }
+
+  const exp = normalizeFraction(expExpr.num, expExpr.den);
+  if (exp.den <= 0n) {
+    return null;
+  }
+
+  const rootNum = exactNthRoot(base.num, exp.den);
+  const rootDen = exactNthRoot(base.den, exp.den);
+  if (rootNum === null || rootDen === null) {
+    return null;
+  }
+
+  return powRationalByInteger({ num: rootNum, den: rootDen }, exp.num);
 }
 
 function normalizeFraction(num: bigint, den: bigint): RationalParts {
@@ -192,6 +219,69 @@ function exactRealRationalPower(baseExpr: Expr, expExpr: Expr): ComplexNumber | 
   return { re: Number(raised.num) / Number(raised.den), im: 0 };
 }
 
+function axisUnitAndMagnitude(baseExpr: Expr): { unit: ComplexNumber; magnitude: RationalParts } | null {
+  const real = intOrRatParts(baseExpr);
+  if (real) {
+    const absVal = absBigInt(real.num);
+    return {
+      unit: real.num < 0n ? { re: -1, im: 0 } : { re: 1, im: 0 },
+      magnitude: { num: absVal, den: real.den },
+    };
+  }
+
+  const imagPart = (expr: Expr): RationalParts | null => intOrRatParts(expr);
+
+  if (baseExpr.kind === "GaussianInteger") {
+    if (baseExpr.re === 0n && baseExpr.im !== 0n) {
+      return {
+        unit: baseExpr.im < 0n ? { re: 0, im: -1 } : { re: 0, im: 1 },
+        magnitude: { num: absBigInt(baseExpr.im), den: 1n },
+      };
+    }
+    return null;
+  }
+
+  if (baseExpr.kind === "Complex") {
+    const re = imagPart(baseExpr.re);
+    const im = imagPart(baseExpr.im);
+    if (!re || !im) {
+      return null;
+    }
+
+    if (re.num === 0n && im.num !== 0n) {
+      return {
+        unit: im.num < 0n ? { re: 0, im: -1 } : { re: 0, im: 1 },
+        magnitude: { num: absBigInt(im.num), den: im.den },
+      };
+    }
+  }
+
+  return null;
+}
+
+function exactAxisUnitMagnitudePower(baseExpr: Expr, expExpr: Expr): ComplexNumber | null {
+  const axis = axisUnitAndMagnitude(baseExpr);
+  if (!axis) {
+    return null;
+  }
+
+  const unitPow = exactUnitRootPower(axis.unit, expExpr);
+  if (!unitPow) {
+    return null;
+  }
+
+  const magPow = exactPositiveRationalPower(axis.magnitude, expExpr);
+  if (!magPow) {
+    return null;
+  }
+
+  const amp = Number(magPow.num) / Number(magPow.den);
+  return {
+    re: unitPow.re * amp,
+    im: unitPow.im * amp,
+  };
+}
+
 function asComplexOrZero(n: Expr | MorphionForm): ComplexNumber {
   const c = toComplex(n);
   if (typeof c === "object" && "re" in c && "im" in c) {
@@ -295,6 +385,11 @@ function toComplex(n: Expr | MorphionForm): { re: number; im: number } | Morphio
     const exactReal = exactRealRationalPower(n.base, n.exp);
     if (exactReal !== null) {
       return exactReal;
+    }
+
+    const exactAxis = exactAxisUnitMagnitudePower(n.base, n.exp);
+    if (exactAxis !== null) {
+      return exactAxis;
     }
 
     const base = asComplexOrZero(n.base);

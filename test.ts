@@ -71,6 +71,14 @@ describe("utility functions", () => {
     expect(toComplex(power(complex(int(0n), int(1n)), rat(3n, 1n)))).toEqual({ re: 0, im: -1 });
   });
 
+  test("toComplex with exact square root on negative real", () => {
+    expect(toComplex(power(int(-4n), rat(1n, 2n)))).toEqual({ re: 0, im: 2 });
+  });
+
+  test("toComplex with exact 3/2 power on negative real", () => {
+    expect(toComplex(power(int(-4n), rat(3n, 2n)))).toEqual({ re: 0, im: -8 });
+  });
+
   test("toExpression with rational", () => {
     const result = toExpression(rat(1n, 2n));
     expect(result).toBe("(1/2)");
