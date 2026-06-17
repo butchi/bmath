@@ -5,6 +5,111 @@ import { normalizeRational } from "./expr";
 import { morphion } from "./morphion";
 
 type ComplexNumber = { re: number; im: number };
+type RationalParts = { num: bigint; den: bigint };
+
+function absBigInt(n: bigint): bigint {
+  return n < 0n ? -n : n;
+}
+
+function powBigInt(base: bigint, exp: bigint): bigint {
+  if (exp < 0n) {
+    throw new Error("powBigInt exponent must be non-negative");
+  }
+  let e = exp;
+  let b = base;
+  let result = 1n;
+  while (e > 0n) {
+    if ((e & 1n) === 1n) {
+      result *= b;
+    }
+    b *= b;
+    e >>= 1n;
+  }
+  return result;
+}
+
+function exactNthRoot(value: bigint, n: bigint): bigint | null {
+  if (n <= 0n || value < 0n) {
+    return null;
+  }
+  if (value === 0n || value === 1n || n === 1n) {
+    return value;
+  }
+
+  let low = 0n;
+  let high = value;
+
+  while (low <= high) {
+    const mid = (low + high) >> 1n;
+    const midPow = powBigInt(mid, n);
+    if (midPow === value) {
+      return mid;
+    }
+    if (midPow < value) {
+      low = mid + 1n;
+    } else {
+      high = mid - 1n;
+    }
+  }
+
+  return null;
+}
+
+function intOrRatParts(e: Expr): RationalParts | null {
+  if (e.kind === "Integer") {
+    return { num: e.value, den: 1n };
+  }
+  if (e.kind === "Rational") {
+    return { num: e.num, den: e.den };
+  }
+  return null;
+}
+
+function powRationalByInteger(base: RationalParts, exp: bigint): RationalParts {
+  if (exp === 0n) {
+    return { num: 1n, den: 1n };
+  }
+
+  const absExp = absBigInt(exp);
+  const numPow = powBigInt(base.num, absExp);
+  const denPow = powBigInt(base.den, absExp);
+
+  if (exp > 0n) {
+    return { num: numPow, den: denPow };
+  }
+
+  return { num: denPow, den: numPow };
+}
+
+function exactRealRationalPower(baseExpr: Expr, expExpr: Expr): ComplexNumber | null {
+  const base = intOrRatParts(baseExpr);
+  if (!base || expExpr.kind !== "Rational") {
+    return null;
+  }
+
+  const p = expExpr.num;
+  const q = expExpr.den;
+
+  if (q <= 0n) {
+    return null;
+  }
+
+  if (base.num < 0n && (q & 1n) === 0n) {
+    return null;
+  }
+
+  const rootNumAbs = exactNthRoot(absBigInt(base.num), q);
+  const rootDen = exactNthRoot(base.den, q);
+  if (rootNumAbs === null || rootDen === null) {
+    return null;
+  }
+
+  const rootNum = base.num < 0n ? -rootNumAbs : rootNumAbs;
+  const rooted: RationalParts = { num: rootNum, den: rootDen };
+  const raised = powRationalByInteger(rooted, p);
+
+  return { re: Number(raised.num) / Number(raised.den), im: 0 };
+}
 
 function asComplexOrZero(n: Expr | MorphionForm): ComplexNumber {
   const c = toComplex(n);
@@ -106,6 +211,11 @@ function toComplex(n: Expr | MorphionForm): { re: number; im: number } | Morphio
   } else if (n.kind === "Symbol") {
     return { re: NaN, im: NaN }; // シンボルは複素数に変換できないのでNaNを返す
   } else if (n.kind === "Power") {
+    const exactReal = exactRealRationalPower(n.base, n.exp);
+    if (exactReal !== null) {
+      return exactReal;
+    }
+
     const base = asComplexOrZero(n.base);
 
     if (n.exp.kind === "Integer") {

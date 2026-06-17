@@ -51,6 +51,18 @@ describe("utility functions", () => {
     }
   });
 
+  test("toComplex with odd root of negative integer", () => {
+    expect(toComplex(power(int(-8n), rat(1n, 3n)))).toEqual({ re: -2, im: 0 });
+  });
+
+  test("toComplex with exact rational power", () => {
+    expect(toComplex(power(rat(16n, 81n), rat(3n, 4n)))).toEqual({ re: 8 / 27, im: 0 });
+  });
+
+  test("toComplex with exact negative rational power", () => {
+    expect(toComplex(power(int(-8n), rat(-2n, 3n)))).toEqual({ re: 1 / 4, im: 0 });
+  });
+
   test("toExpression with rational", () => {
     const result = toExpression(rat(1n, 2n));
     expect(result).toBe("(1/2)");
