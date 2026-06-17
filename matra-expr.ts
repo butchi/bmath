@@ -1,5 +1,7 @@
 import type { Expr } from "./types"
+import type { MorphionForm } from "./types"
 import type { MatraNode } from "./ast-to-tex"
+import { toMorphionForm } from "./utils"
 
 type ExprMatraTag = "Integer" | "Symbol" | "Plus" | "Times" | "Power"
 type ExprMatraNode = [ExprMatraTag, Record<string, any>, ExprMatraNode[]]
@@ -76,7 +78,7 @@ function exprToFormulaNode(expr: Expr): FormulaNode {
   return ["Formula", {}, [exprToMatraExprNode(expr)]]
 }
 
-function formulaNodeToExpr(node: MatraNode): Expr {
+function toFormulaNode(node: MatraNode): FormulaNode {
   if (node[0] === "Formula") {
     const body = node[2]
     if (!Array.isArray(body) || body.length !== 1) {
@@ -86,15 +88,41 @@ function formulaNodeToExpr(node: MatraNode): Expr {
     if (!Array.isArray(exprNode) || !isExprMatraNode(exprNode as MatraNode)) {
       throw new Error("Invalid Formula node: body[0] must be Expr Matra node")
     }
-    return matraExprNodeToExpr(exprNode as ExprMatraNode)
+    return node as FormulaNode
   }
 
   if (isExprMatraNode(node)) {
-    return matraExprNodeToExpr(node)
+    return ["Formula", {}, [node]]
   }
 
   throw new Error(`Unsupported node for formula conversion: ${node[0]}`)
 }
 
-export { exprToMatraExprNode, matraExprNodeToExpr, exprToFormulaNode, formulaNodeToExpr }
+function formulaNodeToExpr(node: MatraNode): Expr {
+  const formula = toFormulaNode(node)
+  return matraExprNodeToExpr(formula[2][0])
+}
+
+function parseFormula(node: MatraNode): Expr {
+  return formulaNodeToExpr(node)
+}
+
+function exprToMorphion(expr: Expr): MorphionForm {
+  return toMorphionForm(expr)
+}
+
+function formulaNodeToMorphion(node: MatraNode): MorphionForm {
+  return exprToMorphion(formulaNodeToExpr(node))
+}
+
+export {
+  exprToMatraExprNode,
+  matraExprNodeToExpr,
+  exprToFormulaNode,
+  formulaNodeToExpr,
+  toFormulaNode,
+  parseFormula,
+  exprToMorphion,
+  formulaNodeToMorphion,
+}
 export type { ExprMatraNode, FormulaNode }

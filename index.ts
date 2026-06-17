@@ -3,7 +3,16 @@ export { toNum, toComplex, toExpression, toJson, toMorphionForm } from "./utils"
 export { morphion, poly, addMorphionForms, mulMorphionForms } from "./morphion";
 export { astToTeX } from "./ast-to-tex";
 export { texToAst } from "./tex-to-ast";
-export { exprToMatraExprNode, matraExprNodeToExpr, exprToFormulaNode, formulaNodeToExpr } from "./matra-expr";
+export {
+	exprToMatraExprNode,
+	matraExprNodeToExpr,
+	exprToFormulaNode,
+	formulaNodeToExpr,
+	toFormulaNode,
+	parseFormula,
+	exprToMorphion,
+	formulaNodeToMorphion,
+} from "./matra-expr";
 export { replacer } from "./json";
 export type { Expr, MorphionForm } from "./types";
 export type { MatraNode } from "./ast-to-tex";
