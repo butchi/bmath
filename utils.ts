@@ -4,6 +4,55 @@ import { int, sym, plus, times } from "./expr";
 import { normalizeRational } from "./expr";
 import { morphion } from "./morphion";
 
+type ComplexNumber = { re: number; im: number };
+
+function asComplexOrZero(n: Expr | MorphionForm): ComplexNumber {
+  const c = toComplex(n);
+  if (typeof c === "object" && "re" in c && "im" in c) {
+    return { re: Number(c.re), im: Number(c.im) };
+  }
+  return { re: 0, im: 0 };
+}
+
+function mulComplex(a: ComplexNumber, b: ComplexNumber): ComplexNumber {
+  return {
+    re: a.re * b.re - a.im * b.im,
+    im: a.re * b.im + a.im * b.re,
+  };
+}
+
+function invComplex(a: ComplexNumber): ComplexNumber {
+  const denom = a.re * a.re + a.im * a.im;
+  return {
+    re: a.re / denom,
+    im: -a.im / denom,
+  };
+}
+
+function powComplexInteger(base: ComplexNumber, exp: bigint): ComplexNumber {
+  if (exp === 0n) {
+    return { re: 1, im: 0 };
+  }
+
+  let e = exp < 0n ? -exp : exp;
+  let b = { re: base.re, im: base.im };
+  let result: ComplexNumber = { re: 1, im: 0 };
+
+  while (e > 0n) {
+    if ((e & 1n) === 1n) {
+      result = mulComplex(result, b);
+    }
+    b = mulComplex(b, b);
+    e >>= 1n;
+  }
+
+  if (exp < 0n) {
+    return invComplex(result);
+  }
+
+  return result;
+}
+
 function toNum(n: Expr | MorphionForm): number {
   if (n.kind === "Integer") {
     return Number(n.value);
@@ -57,27 +106,37 @@ function toComplex(n: Expr | MorphionForm): { re: number; im: number } | Morphio
   } else if (n.kind === "Symbol") {
     return { re: NaN, im: NaN }; // シンボルは複素数に変換できないのでNaNを返す
   } else if (n.kind === "Power") {
-    const baseCplx = toComplex(n.base);
-    const baseCplxObj = (typeof baseCplx === "object" && "re" in baseCplx) ? baseCplx : { re: 0, im: 0 };
+    const base = asComplexOrZero(n.base);
+
+    if (n.exp.kind === "Integer") {
+      return powComplexInteger(base, n.exp.value);
+    }
+
+    if (n.exp.kind === "Rational") {
+      if (n.exp.den === 1n) {
+        return powComplexInteger(base, n.exp.num);
+      }
+
+      // principal square root of -1 is exactly i
+      if (n.exp.num === 1n && n.exp.den === 2n && base.re === -1 && base.im === 0) {
+        return { re: 0, im: 1 };
+      }
+    }
+
     const expNum = toNum(n.exp);
-    
-    // Convert base to polar form: r * e^(i*theta)
-    const re = Number(baseCplxObj.re);
-    const im = Number(baseCplxObj.im);
-    const r = Math.sqrt(re * re + im * im);
-    const theta = Math.atan2(im, re);
-    
-    // Calculate (r * e^(i*theta))^exp = r^exp * e^(i*theta*exp)
+    if (base.im === 0 && base.re >= 0) {
+      return { re: Math.pow(base.re, expNum), im: 0 };
+    }
+
+    const r = Math.sqrt(base.re * base.re + base.im * base.im);
+    const theta = Math.atan2(base.im, base.re);
     const rExp = Math.pow(r, expNum);
     const thetaExp = theta * expNum;
-    
-    // Convert back to rectangular form
-    const result = {
+
+    return {
       re: rExp * Math.cos(thetaExp),
       im: rExp * Math.sin(thetaExp),
     };
-    
-    return result;
   } else if (n.kind === "Plus") {
     let re = 0;
     let im = 0;
