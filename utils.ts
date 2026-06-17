@@ -65,6 +65,87 @@ function intOrRatParts(e: Expr): RationalParts | null {
   return null;
 }
 
+function normalizeFraction(num: bigint, den: bigint): RationalParts {
+  if (den === 0n) {
+    throw new Error("Denominator cannot be zero");
+  }
+
+  let n = num;
+  let d = den;
+  if (d < 0n) {
+    n = -n;
+    d = -d;
+  }
+
+  const g = absBigInt(gcdBigInt(n, d));
+  return { num: n / g, den: d / g };
+}
+
+function gcdBigInt(a: bigint, b: bigint): bigint {
+  let x = absBigInt(a);
+  let y = absBigInt(b);
+  while (y !== 0n) {
+    [x, y] = [y, x % y];
+  }
+  return x;
+}
+
+function mulFraction(a: RationalParts, b: RationalParts): RationalParts {
+  return normalizeFraction(a.num * b.num, a.den * b.den);
+}
+
+function exprToFraction(e: Expr): RationalParts | null {
+  if (e.kind === "Integer") {
+    return { num: e.value, den: 1n };
+  }
+  if (e.kind === "Rational") {
+    return normalizeFraction(e.num, e.den);
+  }
+  return null;
+}
+
+function unitRootAngleOverPi(base: ComplexNumber): RationalParts | null {
+  if (base.re === 1 && base.im === 0) {
+    return { num: 0n, den: 1n };
+  }
+  if (base.re === -1 && base.im === 0) {
+    return { num: 1n, den: 1n };
+  }
+  if (base.re === 0 && base.im === 1) {
+    return { num: 1n, den: 2n };
+  }
+  if (base.re === 0 && base.im === -1) {
+    return { num: -1n, den: 2n };
+  }
+  return null;
+}
+
+function exactUnitRootPower(base: ComplexNumber, exp: Expr): ComplexNumber | null {
+  const thetaOverPi = unitRootAngleOverPi(base);
+  const expFrac = exprToFraction(exp);
+  if (!thetaOverPi || !expFrac) {
+    return null;
+  }
+
+  const phase = mulFraction(thetaOverPi, expFrac);
+  const twicePhase = normalizeFraction(2n * phase.num, phase.den);
+  if (twicePhase.den !== 1n) {
+    return null;
+  }
+
+  const mod = ((twicePhase.num % 4n) + 4n) % 4n;
+  if (mod === 0n) {
+    return { re: 1, im: 0 };
+  }
+  if (mod === 1n) {
+    return { re: 0, im: 1 };
+  }
+  if (mod === 2n) {
+    return { re: -1, im: 0 };
+  }
+  return { re: 0, im: -1 };
+}
+
 function powRationalByInteger(base: RationalParts, exp: bigint): RationalParts {
   if (exp === 0n) {
     return { num: 1n, den: 1n };
@@ -217,6 +298,11 @@ function toComplex(n: Expr | MorphionForm): { re: number; im: number } | Morphio
     }
 
     const base = asComplexOrZero(n.base);
+
+    const exactUnitRoot = exactUnitRootPower(base, n.exp);
+    if (exactUnitRoot !== null) {
+      return exactUnitRoot;
+    }
 
     if (n.exp.kind === "Integer") {
       return powComplexInteger(base, n.exp.value);

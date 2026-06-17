@@ -63,6 +63,14 @@ describe("utility functions", () => {
     expect(toComplex(power(int(-8n), rat(-2n, 3n)))).toEqual({ re: 1 / 4, im: 0 });
   });
 
+  test("toComplex with exact rational phase on -1", () => {
+    expect(toComplex(power(int(-1n), rat(3n, 2n)))).toEqual({ re: 0, im: -1 });
+  });
+
+  test("toComplex with exact rational phase on i", () => {
+    expect(toComplex(power(complex(int(0n), int(1n)), rat(3n, 1n)))).toEqual({ re: 0, im: -1 });
+  });
+
   test("toExpression with rational", () => {
     const result = toExpression(rat(1n, 2n));
     expect(result).toBe("(1/2)");
