@@ -1,6 +1,7 @@
 import type { Expr } from "./types"
 import type { MorphionForm } from "./types"
 import type { MatraNode } from "./ast-to-tex"
+import { astToTeX } from "./ast-to-tex"
 import { texToAst } from "./tex-to-ast"
 import { int, plus, power, sym, times, call } from "./expr"
 import { toMorphionForm } from "./utils"
@@ -215,6 +216,22 @@ function texToMorphion(tex: string): MorphionForm {
   return exprToMorphion(texToExpr(tex))
 }
 
+// Mock: TeX input → Matra AST → TeX output (direct TeX processing)
+function processMatrixTeX(texInput: string, mode: "conventional" | "consistent" = "conventional"): string {
+  try {
+    const ast = texToAst(texInput)
+    return astToTeX(ast, mode)
+  } catch (error) {
+    // On parse error, return input as-is
+    return texInput
+  }
+}
+
+// Mock: Batch process multiple TeX expressions
+function processBatchTeX(texExpressions: string[], mode: "conventional" | "consistent" = "conventional"): string[] {
+  return texExpressions.map((tex) => processMatrixTeX(tex, mode))
+}
+
 export {
   exprToMatraExprNode,
   matraExprNodeToExpr,
@@ -228,5 +245,7 @@ export {
   exprToMorphion,
   formulaNodeToMorphion,
   texToMorphion,
+  processMatrixTeX,
+  processBatchTeX,
 }
 export type { ExprMatraNode, FormulaNode }

@@ -13,6 +13,8 @@ import {
   texToFormulaNode,
   texToMorphion,
   toFormulaNode,
+  processMatrixTeX,
+  processBatchTeX,
 } from "./matra-expr"
 
 describe("matra-expr bridge", () => {
@@ -139,3 +141,76 @@ describe("matra-expr bridge", () => {
     expect(texToExpr("\\sin x + 1")).toEqual(plus(int(1n), call("sin", sym("x"))))
   })
 })
+
+describe("TeX I/O mock processing", () => {
+  test("processMatrixTeX: simple passthrough", () => {
+    const result = processMatrixTeX("x")
+    expect(result).toBe("x")
+  })
+
+  test("processMatrixTeX: simple addition", () => {
+    const result = processMatrixTeX("x + 1")
+    expect(result).toBe("x + 1")
+  })
+
+  test("processMatrixTeX: multiplication", () => {
+    const result = processMatrixTeX("2x")
+    expect(result).toBe("2 x")
+  })
+
+  test("processMatrixTeX: power expression", () => {
+    const result = processMatrixTeX("x^2")
+    expect(result).toBe("x^{2}")
+  })
+
+  test("processMatrixTeX: sin function conventional mode", () => {
+    const result = processMatrixTeX("\\sin x", "conventional")
+    expect(result).toBe("\\sin x")
+  })
+
+  test("processMatrixTeX: sin function consistent mode", () => {
+    const result = processMatrixTeX("\\sin x", "consistent")
+    expect(result).toBe("\\sin(x)")
+  })
+
+  test("processMatrixTeX: cos function", () => {
+    const result = processMatrixTeX("\\cos(x)")
+    expect(result).toMatch(/\\cos/)
+  })
+
+  test("processMatrixTeX: complex expression", () => {
+    const result = processMatrixTeX("2x + 1")
+    expect(result).toBe("2 x + 1")
+  })
+
+  test("processMatrixTeX: fraction", () => {
+    const result = processMatrixTeX("\\frac{1}{2}")
+    expect(result).toBe("\\frac{1}{2}")
+  })
+
+  test("processBatchTeX: multiple expressions", () => {
+    const results = processBatchTeX(["x", "y", "x + y"])
+    expect(results.length).toBe(3)
+    expect(results[0]).toBe("x")
+    expect(results[1]).toBe("y")
+    expect(results[2]).toBe("x + y")
+  })
+
+  test("processBatchTeX: error handling", () => {
+    const results = processBatchTeX(["x", "invalid syntax @#$", "y"])
+    expect(results.length).toBe(3)
+    expect(results[1]).toBe("invalid syntax @#$") // returns input on error
+  })
+
+  test("processMatrixTeX: error handling returns input", () => {
+    const input = "invalid @#$"
+    const result = processMatrixTeX(input)
+    expect(result).toBe(input)
+  })
+
+  test("processMatrixTeX: pi constant", () => {
+    const result = processMatrixTeX("\\pi")
+    expect(result).toBe("\\pi")
+  })
+})
+

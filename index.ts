@@ -16,6 +16,8 @@ export {
 	texToExpr,
 	texToFormulaNode,
 	texToMorphion,
+	processMatrixTeX,
+	processBatchTeX,
 } from "./matra-expr";
 export { replacer } from "./json";
 export type { Expr, MorphionForm } from "./types";
