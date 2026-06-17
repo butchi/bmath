@@ -1,7 +1,72 @@
 /// <reference types="jest" />
 import { morphion, poly, addMorphionForms, mulMorphionForms } from "./morphion";
-import { int, sym } from "./expr";
-import { toJson } from "./utils";
+import { int, sym, rat, power, complex, plus, times } from "./expr";
+import { toJson, toNum, toExpression, toComplex, toMorphionForm } from "./utils";
+
+describe("utility functions", () => {
+  test("plus with multiple integers", () => {
+    const result = plus(int(1n), int(2n), int(3n));
+    expect(toNum(result)).toBe(6);
+  });
+
+  test("times with multiple integers", () => {
+    const result = times(int(4n), int(5n), int(6n));
+    expect(toNum(result)).toBe(120);
+  });
+
+  test("power of integers", () => {
+    const result = power(int(2n), int(3n));
+    expect(toNum(result)).toBe(8);
+  });
+
+  test("toComplex with integer", () => {
+    expect(toComplex(int(5n))).toEqual({ re: 5, im: 0 });
+  });
+
+  test("toComplex with rational", () => {
+    expect(toComplex(rat(1n, 2n))).toEqual({ re: 0.5, im: 0 });
+  });
+
+  test("toComplex with complex number", () => {
+    expect(toComplex(complex(int(1n), int(2n)))).toEqual({ re: 1, im: 2 });
+  });
+
+  test("toComplex with power", () => {
+    expect(toComplex(power(int(2n), int(3n)))).toEqual({ re: 8, im: 0 });
+  });
+
+  test("toComplex with negative power", () => {
+    expect(toComplex(power(int(-1n), int(2n)))).toEqual({ re: 1, im: 0 });
+  });
+
+  test("toComplex with square root of -1", () => {
+    expect(toComplex(power(int(-1n), rat(1n, 2n)))).toEqual({ re: 0, im: 1 });
+  });
+
+  test("toComplex with square root of 2", () => {
+    const result = toComplex(power(int(2n), rat(1n, 2n)));
+    if (typeof result === "object" && "re" in result && "im" in result) {
+      expect(result.re).toBeCloseTo(1.414213562373095);
+      expect(result.im).toBe(0);
+    }
+  });
+
+  test("toExpression with rational", () => {
+    const result = toExpression(rat(1n, 2n));
+    expect(result).toBe("(1/2)");
+  });
+
+  test("toExpression with square root", () => {
+    const result = toExpression(power(int(2n), rat(1n, 2n)));
+    expect(result).toContain("2");
+  });
+
+  test("toMorphionForm with rational", () => {
+    const result = toMorphionForm(rat(1n, 2n));
+    expect(result.kind).toBe("MorphionForm");
+    expect(result.base).toEqual(int(2n));
+  });
+});
 
 describe("morphion", () => {
   test("morphion of x^2 + 2x + 1", () => {
