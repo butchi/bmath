@@ -14,8 +14,12 @@
   "author": "IWABUCHI Yuki butchi",
   "type": "module",
   "main": "index.ts",
+  "bin": {
+    "bmath": "./cli.ts"
+  },
   "scripts": {
     "start": "tsx index.ts",
+    "cli": "tsx cli.ts",
     "test": "jest"
   },
   "dependencies": {
