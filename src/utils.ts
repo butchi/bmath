@@ -1,4 +1,4 @@
-import { Expr, MorphionForm } from "./types";
+import { Expr, MorphionForm, PolynarionForm } from "./types";
 import { replacer } from "./json";
 import { int, sym, plus, times } from "./expr";
 import { normalizeRational } from "./expr";
@@ -174,7 +174,7 @@ function toExpression(n: Expr | MorphionForm): string {
   }
 }
 
-function rationalAsMorphion(num: bigint, den: bigint): MorphionForm {
+function rationalAsMorphion(num: bigint, den: bigint): PolynarionForm {
   const frac = normalizeRational(num, den);
   if (frac.head === "Rational") {
     return morphion(int(frac.attributes.den), [{ key: int(-1n), coeff: int(frac.attributes.num) }]);
@@ -184,14 +184,14 @@ function rationalAsMorphion(num: bigint, den: bigint): MorphionForm {
 
 const ii = sym("i");
 
-function complexAsMorphion(re: Expr, im: Expr): MorphionForm {
+function complexAsMorphion(re: Expr, im: Expr): PolynarionForm {
   return morphion(ii, [
     { key: int(0n), coeff: re },
     { key: int(1n), coeff: im },
   ]);
 }
 
-function toMorphionForm(n: Expr): MorphionForm {
+function toMorphionForm(n: Expr): PolynarionForm {
   if (n.head === "Integer") {
     return morphion(int(1n), [{ key: int(0n), coeff: n }]);
   } else if (n.head === "Rational") {
@@ -202,12 +202,15 @@ function toMorphionForm(n: Expr): MorphionForm {
     return complexAsMorphion(n.attributes.re, n.attributes.im);
   } else if (n.head === "Power") {
     if (n.attributes.base.head === "Symbol" && n.attributes.base.attributes.name === "x") {
+      if (n.attributes.exp.head !== "Integer") {
+        throw new Error("Unsupported exponent for Power in toMorphionForm");
+      }
       return morphion(sym("x"), [{ key: n.attributes.exp, coeff: int(1n) }]);
     } else {
       throw new Error("Unsupported base for Power in toMorphionForm");
     }
   } else if (n.head === "Symbol") {
-    return morphion(n, [{ key: int(0n), coeff: int(1n) }]);
+    return morphion(n, [{ key: int(1n), coeff: int(1n) }]);
   } else if (n.head === "Call") {
     throw new Error(`Cannot morphionize Call: ${n.attributes.fn}`);
   } else {

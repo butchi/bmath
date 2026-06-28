@@ -1,4 +1,4 @@
-import { Expr } from "./types";
+import { Expr, IntegerExpr } from "./types";
 
 function normalize(m: Expr): Expr {
   if (m.head === "Plus") {
@@ -82,7 +82,7 @@ function normalize(m: Expr): Expr {
   }
 }
 
-const int = (value: bigint): Expr => ({ head: "Integer", attributes: { value } });
+const int = (value: bigint): IntegerExpr => ({ head: "Integer", attributes: { value } });
 
 const gcd = (a: bigint, b: bigint): bigint => {
   a = a < 0n ? -a : a;

@@ -1,34 +1,39 @@
-import { Expr, MorphionForm } from "./types";
+import { Expr, IntegerExpr, MorphionForm, MorphionTerm, PolynarionForm } from "./types";
 import { replacer } from "./json";
 import { int, sym, plus, times } from "./expr";
 
-type MorphionTerm = { key: Expr; coeff: Expr };
-
-function morphion(
+function morphion<Key extends Expr = Expr>(
   base: Expr,
-  entries: MorphionTerm[]
-): MorphionForm {
-  const terms = new Map<string, MorphionTerm>();
+  entries: MorphionTerm<Key>[]
+): MorphionForm<Key> {
+  const terms = new Map<string, MorphionTerm<Key>>();
   for (const entry of entries) {
     mergeTerm(terms, entry);
   }
   return { head: "MorphionForm", attributes: { base, terms } };
 }
 
+function polynarion(
+  base: Expr,
+  entries: MorphionTerm<IntegerExpr>[]
+): PolynarionForm {
+  return morphion(base, entries);
+}
+
 function poly(
   variable: string,
   coeffs: Array<{ key: bigint; coeff: Expr }>
-): MorphionForm {
+): PolynarionForm {
   const x = sym(variable);
 
-  return morphion(x, coeffs.map(({ key, coeff }) => ({ key: int(key), coeff })));
+  return polynarion(x, coeffs.map(({ key, coeff }) => ({ key: int(key), coeff })));
 }
 
 function keyOf(e: Expr): string {
   return JSON.stringify(e, replacer);
 }
 
-function mergeTerm(terms: Map<string, MorphionTerm>, term: MorphionTerm): void {
+function mergeTerm<Key extends Expr>(terms: Map<string, MorphionTerm<Key>>, term: MorphionTerm<Key>): void {
   const keyStr = keyOf(term.key);
   const existing = terms.get(keyStr);
   terms.set(keyStr, existing
@@ -52,9 +57,9 @@ function sameExpr(a: Expr, b: Expr): boolean {
 }
 
 // same base only
-function addMorphionForms(a: MorphionForm, b: MorphionForm): MorphionForm {
+function addMorphionForms<Key extends Expr>(a: MorphionForm<Key>, b: MorphionForm<Key>): MorphionForm<Key> {
   const base = assertSameBase(a, b, "add");
-  const terms = new Map<string, MorphionTerm>();
+  const terms = new Map<string, MorphionTerm<Key>>();
 
   for (const term of a.attributes.terms.values()) {
     terms.set(keyOf(term.key), term);
@@ -65,6 +70,30 @@ function addMorphionForms(a: MorphionForm, b: MorphionForm): MorphionForm {
   }
 
   return morphion(base, Array.from(terms.values()));
+}
+
+function addPolynarionForms(a: PolynarionForm, b: PolynarionForm): PolynarionForm {
+  return addMorphionForms(a, b);
+}
+
+function addIntegerKeys(a: IntegerExpr, b: IntegerExpr): IntegerExpr {
+  return int(a.attributes.value + b.attributes.value);
+}
+
+function mulPolynarionForms(a: PolynarionForm, b: PolynarionForm): PolynarionForm {
+  const base = assertSameBase(a, b, "multiply");
+  const terms = new Map<string, MorphionTerm<IntegerExpr>>();
+
+  for (const { key: keyA, coeff: coeffA } of a.attributes.terms.values()) {
+    for (const { key: keyB, coeff: coeffB } of b.attributes.terms.values()) {
+      mergeTerm(terms, {
+        key: addIntegerKeys(keyA, keyB),
+        coeff: times(coeffA, coeffB),
+      });
+    }
+  }
+
+  return polynarion(base, Array.from(terms.values()));
 }
 
 // same base only
@@ -84,4 +113,4 @@ function mulMorphionForms(a: MorphionForm, b: MorphionForm): MorphionForm {
   return morphion(base, Array.from(terms.values()));
 }
 
-export { morphion, poly, addMorphionForms, mulMorphionForms };
+export { morphion, polynarion, poly, addMorphionForms, addPolynarionForms, mulMorphionForms, mulPolynarionForms };

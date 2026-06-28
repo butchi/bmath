@@ -1,10 +1,14 @@
 type MatraNode = { head: string; attributes: Record<string, any>; children: (MatraNode | string)[] }
 
 // 第1層: 一般式
+type IntegerExpr = { head: "Integer"; attributes: { value: bigint } }
+type RationalExpr = { head: "Rational"; attributes: { num: bigint; den: bigint } }
+type GaussianIntegerExpr = { head: "GaussianInteger"; attributes: { re: bigint; im: bigint } }
+
 type Expr =
-  | { head: "Integer"; attributes: { value: bigint } }
-  | { head: "Rational"; attributes: { num: bigint; den: bigint } }
-  | { head: "GaussianInteger"; attributes: { re: bigint; im: bigint } }
+  | IntegerExpr
+  | RationalExpr
+  | GaussianIntegerExpr
   | { head: "Complex"; attributes: { re: Expr; im: Expr } }
   | { head: "Symbol"; attributes: { name: string } }
   | { head: "Plus"; attributes: { terms: Expr[] } }
@@ -13,15 +17,32 @@ type Expr =
   | { head: "Call"; attributes: { fn: string; arg: Expr } };
 
 // 第2層: モーフィオン標準形
-type MorphionForm = {
+type MorphionTerm<Key extends Expr = Expr> = {
+  key: Key;
+  coeff: Expr;
+};
+
+type MorphionForm<Key extends Expr = Expr> = {
   head: "MorphionForm";
   attributes: {
     base: Expr;
-    terms: Map<string, {
-      key: Expr;
-      coeff: Expr;
-    }>;
+    terms: Map<string, MorphionTerm<Key>>;
   };
 };
 
-export type { MatraNode, Expr, MorphionForm };
+type PolynarionForm = MorphionForm<IntegerExpr>;
+type GridarionForm = MorphionForm<GaussianIntegerExpr>;
+type GenerionForm = MorphionForm<Expr>;
+
+export type {
+  MatraNode,
+  IntegerExpr,
+  RationalExpr,
+  GaussianIntegerExpr,
+  Expr,
+  MorphionTerm,
+  MorphionForm,
+  PolynarionForm,
+  GridarionForm,
+  GenerionForm,
+};

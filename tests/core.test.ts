@@ -1,5 +1,5 @@
 /// <reference types="jest" />
-import { morphion, poly, addMorphionForms, mulMorphionForms } from "../src/morphion";
+import { morphion, poly, addMorphionForms, addPolynarionForms, mulMorphionForms, mulPolynarionForms } from "../src/morphion";
 import { int, sym, rat, power, complex, plus, times } from "../src/expr";
 import { toJson, toNum, toExpression, toComplex, toMorphionForm } from "../src/utils";
 
@@ -153,6 +153,14 @@ describe("utility functions", () => {
       expect(result.head).toBe("MorphionForm");
       expect(result.attributes.base).toEqual(int(2n));
     });
+
+    test("toMorphionForm with symbol uses first power", () => {
+      const result = toMorphionForm(sym("x"));
+      expect(result.attributes.base).toEqual(sym("x"));
+      expect(Array.from(result.attributes.terms.values())).toEqual([
+        { key: int(1n), coeff: int(1n) },
+      ]);
+    });
   });
 });
 
@@ -235,6 +243,16 @@ describe("morphion", () => {
         },
       });
     });
+
+    test("addPolynarionForms preserves integer keys", () => {
+      const a = poly("x", [{ key: 1n, coeff: int(1n) }]);
+      const b = poly("x", [{ key: 1n, coeff: int(2n) }]);
+      const result = addPolynarionForms(a, b);
+
+      expect(Array.from(result.attributes.terms.values())).toEqual([
+        { key: int(1n), coeff: int(3n) },
+      ]);
+    });
   });
 
   describe("multiplication", () => {
@@ -259,6 +277,16 @@ describe("morphion", () => {
           ]),
         },
       });
+    });
+
+    test("mulPolynarionForms preserves integer keys", () => {
+      const a = poly("x", [{ key: 1n, coeff: int(1n) }]);
+      const b = poly("x", [{ key: 2n, coeff: int(1n) }]);
+      const result = mulPolynarionForms(a, b);
+
+      expect(Array.from(result.attributes.terms.values())).toEqual([
+        { key: int(3n), coeff: int(1n) },
+      ]);
     });
 
     test("mulMorphionForms of (x + 1) and (x - 1)", () => {

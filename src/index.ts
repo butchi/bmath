@@ -1,6 +1,6 @@
 export { int, sym, rat, gi, complex, power, plus, times, call, normalizeRational } from "./expr";
 export { toNum, toComplex, toExpression, toJson, toMorphionForm } from "./utils";
-export { morphion, poly, addMorphionForms, mulMorphionForms } from "./morphion";
+export { morphion, polynarion, poly, addMorphionForms, addPolynarionForms, mulMorphionForms, mulPolynarionForms } from "./morphion";
 export { astToTeX } from "./ast-to-tex";
 export { texToAst } from "./tex-to-ast";
 export {
@@ -22,6 +22,6 @@ export {
 	processBatchTeX,
 } from "./matra-expr";
 export { replacer } from "./json";
-export type { Expr, MorphionForm } from "./types";
+export type { Expr, GenerionForm, GridarionForm, MorphionForm, MorphionTerm, PolynarionForm } from "./types";
 export type { MatraNode } from "./ast-to-tex";
 export type { ExprMatraNode, FormulaNode } from "./matra-expr";

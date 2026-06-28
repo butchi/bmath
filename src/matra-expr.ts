@@ -1,5 +1,5 @@
 import type { Expr } from "./types"
-import type { MorphionForm } from "./types"
+import type { PolynarionForm } from "./types"
 import type { MatraNode } from "./ast-to-tex"
 import { astToTeX } from "./ast-to-tex"
 import { texToAst } from "./tex-to-ast"
@@ -278,15 +278,15 @@ function texToFormulaNode(tex: string): FormulaNode {
   return exprToFormulaNode(texToExpr(tex))
 }
 
-function exprToMorphion(expr: Expr): MorphionForm {
+function exprToMorphion(expr: Expr): PolynarionForm {
   return toMorphionForm(expr)
 }
 
-function formulaNodeToMorphion(node: MatraNode): MorphionForm {
+function formulaNodeToMorphion(node: MatraNode): PolynarionForm {
   return exprToMorphion(formulaNodeToExpr(node))
 }
 
-function texToMorphion(tex: string): MorphionForm {
+function texToMorphion(tex: string): PolynarionForm {
   return exprToMorphion(texToExpr(tex))
 }
 
