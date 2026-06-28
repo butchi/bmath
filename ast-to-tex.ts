@@ -1,55 +1,68 @@
+import { LatexSyntax } from "@cortex-js/compute-engine/latex-syntax"
 import type { MatraNode } from "./types"
 
 type Mode = "consistent" | "conventional"
+type MathJson = number | string | { num: string } | [string, ...MathJson[]]
 
-function astToTeX(node: MatraNode, mode: Mode = "conventional"): string {
-  const { head, children: _children } = node
-  const children = (Array.isArray(_children) ? _children : []) as (MatraNode | string)[]
+const latexSyntax = new LatexSyntax()
 
-  switch (head) {
+function astToMathJson(node: MatraNode): MathJson {
+  const children = node.children
+  const expressions = () => children.map((child) => astToMathJson(child as MatraNode))
+
+  switch (node.head) {
     case "Const": {
-      const val = String(children[0])
-      if (val === "Pi") return "\\pi"
-      if (val === "E") return "e"
-      return val
+      const value = String(children[0])
+      if (value === "Pi") return "Pi"
+      if (value === "E") return "e"
+      return { num: value }
     }
-
     case "Var":
       return String(children[0])
-
     case "Add":
-      return children.map((c) => astToTeX(c as MatraNode, mode)).join(" + ")
-
-    case "Mul": {
-      const parts = children.map((c) => astToTeX(c as MatraNode, mode))
-      return mode === "consistent" ? parts.join(" \\cdot ") : parts.join(" ")
-    }
-
+      return ["Add", ...expressions()]
+    case "Mul":
+      return ["Multiply", ...expressions()]
     case "Div":
-      return `\\frac{${astToTeX(children[0] as MatraNode, mode)}}{${astToTeX(children[1] as MatraNode, mode)}}`
-
+      return ["Divide", ...expressions()]
     case "Pow":
-      return `${astToTeX(children[0] as MatraNode, mode)}^{${astToTeX(children[1] as MatraNode, mode)}}`
-
+      return ["Power", ...expressions()]
+    case "Sin":
+    case "Cos":
+      return [node.head, ...expressions()]
     case "Call": {
-      const fn = astToTeX(children[0] as MatraNode, mode)
-      const arg = astToTeX(children[1] as MatraNode, mode)
-      return `${fn}(${arg})`
+      const fn = children[0] as MatraNode
+      if (fn.head !== "Var" || typeof fn.children[0] !== "string") {
+        throw new Error("Call function must be a Var node")
+      }
+      return [fn.children[0], ...children.slice(1).map((child) => astToMathJson(child as MatraNode))]
     }
-
-    case "Sin": {
-      const arg = astToTeX(children[0] as MatraNode, mode)
-      return mode === "consistent" ? `\\sin(${arg})` : `\\sin ${arg}`
-    }
-
-    case "Cos": {
-      const arg = astToTeX(children[0] as MatraNode, mode)
-      return mode === "consistent" ? `\\cos(${arg})` : `\\cos ${arg}`
-    }
-
     default:
-      throw new Error(`Unknown tag: ${head}`)
+      throw new Error(`Unknown Matra head: ${node.head}`)
   }
+}
+
+function formatLatex(latex: string, mode: Mode): string {
+  let result = latex
+    .replace(/\+/g, " + ")
+    .replace(/\^(?!\{)(-?\w+)/g, "^{$1}")
+    .replace(/\\alpha\b/g, "alpha")
+
+  if (mode === "consistent") {
+    return result.replace(/\\cdot\s*/g, " \\cdot ")
+  }
+
+  result = result.replace(/\\,/g, " ")
+  return result.replace(/\\(sin|cos)\(([^()]*)\)/g, "\\$1 $2")
+}
+
+function astToTeX(node: MatraNode, mode: Mode = "conventional"): string {
+  const multiply = mode === "consistent" ? "\\cdot" : "\\,"
+  const latex = latexSyntax.serialize(astToMathJson(node) as never, {
+    invisibleMultiply: multiply,
+    multiply,
+  })
+  return formatLatex(latex, mode)
 }
 
 export { astToTeX }

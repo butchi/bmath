@@ -143,6 +143,6 @@ describe("astToTeX", () => {
         },
       ],
     }
-    expect(astToTeX(ast)).toBe("\\frac{1 + x}{1 + -1 x}")
+    expect(astToTeX(ast)).toBe("\\frac{1 + x}{1-x}")
   })
 })
