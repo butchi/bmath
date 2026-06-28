@@ -1,4 +1,4 @@
-import { simplify } from "@cortex-js/compute-engine"
+import { evaluate, N, simplify } from "@cortex-js/compute-engine"
 import parser from "../parser/matra-parser.cjs"
 
 type MathJson = number | string | boolean | null | [string, ...MathJson[]]
@@ -39,8 +39,22 @@ function parseMatraMathJson(source: string): MathJson {
 }
 
 function evaluateMatra(source: string): unknown {
+  return evaluate(parseMatraMathJson(source) as never).toMathJson()
+}
+
+function simplifyMatra(source: string): unknown {
   return simplify(parseMatraMathJson(source) as never).toMathJson()
 }
 
-export { evaluateMatra, matraNodeToMathJson, parseMatraMathJson }
+function numericEvaluateMatra(source: string): unknown {
+  return N(parseMatraMathJson(source) as never).toMathJson()
+}
+
+export {
+  evaluateMatra,
+  matraNodeToMathJson,
+  numericEvaluateMatra,
+  parseMatraMathJson,
+  simplifyMatra,
+}
 export type { MathJson }

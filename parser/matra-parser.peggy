@@ -78,15 +78,15 @@ String "string"
   / "::string::"
 
 Number "number"
-  = num:$([1-9][0-9]*) {
+  = num:$("-"? [1-9][0-9]*) {
     return Number(num)
   }
   / "0" { return 0 }
   / "::number::"
 
 Boolean "boolean"
-  = "true"
-  / "false"
+  = "true" { return true }
+  / "false" { return false }
   / "::boolean::"
   
 Identifier "identifier"

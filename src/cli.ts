@@ -7,7 +7,9 @@ import {
   exprToFormulaNode,
   exprToMatraExprNode,
   evaluateMatra,
+  numericEvaluateMatra,
   parseMatraMathJson,
+  simplifyMatra,
   parseMatraExpr,
   parseMatraFormula,
   texToExpr,
@@ -21,16 +23,18 @@ if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
 bmath CLI
 
 Usage:
-  bmath "<matra>" [--input FORMAT] [--mode MODE] [--output FORMAT]
+  bmath "<matra>" [--operation OPERATION] [--input FORMAT] [--mode MODE] [--output FORMAT]
 
 Options:
   --input      Input format: "matra" (default) or "tex"
+  --operation  Compute operation: "evaluate" (default), "simplify", or "numeric"
   --mode       Output mode: "conventional" (default) or "consistent"
   --output     Output format: "result" (default), "mathjson", "tex", "expr", "formula", "morphion"
 
 Examples:
   bmath 'Add(1, 2, 3)'
   bmath 'Add(1, 2, 3)' --output mathjson
+  bmath 'Divide(1, 3)' --operation numeric
   bmath "x^2 + 1" --input tex
 `)
   process.exit(0)
@@ -38,12 +42,16 @@ Examples:
 
 const input = args[0]
 let inputFormat: "matra" | "tex" = "matra"
+let operation: "evaluate" | "simplify" | "numeric" = "evaluate"
 let mode: "conventional" | "consistent" = "conventional"
 let outputFormat = "result"
 
 for (let i = 1; i < args.length; i++) {
   if (args[i] === "--input") {
     inputFormat = (args[i + 1] as any) || "matra"
+    i++
+  } else if (args[i] === "--operation") {
+    operation = (args[i + 1] as any) || "evaluate"
     i++
   } else if (args[i] === "--mode") {
     mode = (args[i + 1] as any) || "conventional"
@@ -58,6 +66,9 @@ try {
   if (inputFormat !== "matra" && inputFormat !== "tex") {
     throw new Error(`Unknown input format: ${inputFormat}`)
   }
+  if (operation !== "evaluate" && operation !== "simplify" && operation !== "numeric") {
+    throw new Error(`Unknown operation: ${operation}`)
+  }
 
   if (inputFormat === "matra" && outputFormat === "mathjson") {
     console.log(JSON.stringify(parseMatraMathJson(input)))
@@ -65,7 +76,8 @@ try {
   }
 
   if (inputFormat === "matra" && outputFormat === "result") {
-    console.log(JSON.stringify(evaluateMatra(input)))
+    const operations = { evaluate: evaluateMatra, simplify: simplifyMatra, numeric: numericEvaluateMatra }
+    console.log(JSON.stringify(operations[operation](input)))
     process.exit(0)
   }
 

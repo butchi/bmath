@@ -2,7 +2,13 @@ export { int, sym, rat, gi, complex, power, plus, times, call, normalizeRational
 export { toNum, toComplex, toExpression, toJson, toMorphionForm } from "./utils";
 export { morphion, polynarion, poly, addMorphionForms, addPolynarionForms, mulMorphionForms, mulPolynarionForms } from "./morphion";
 export { astToTeX } from "./ast-to-tex";
-export { evaluateMatra, matraNodeToMathJson, parseMatraMathJson } from "./matra-math-json";
+export {
+	evaluateMatra,
+	matraNodeToMathJson,
+	numericEvaluateMatra,
+	parseMatraMathJson,
+	simplifyMatra,
+} from "./matra-math-json";
 export type { MathJson } from "./matra-math-json";
 export { texToAst } from "./tex-to-ast";
 export {

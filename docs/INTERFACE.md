@@ -57,6 +57,30 @@ npm run cli -- 'Power(Symbol(name="x"), Integer(value="2"))' --output formula
 npm run cli -- "x^2 + 1" --input tex
 ```
 
+**`--operation`**: Compute Engineの処理
+
+- `evaluate` (デフォルト): 式を評価
+- `simplify`: 記号式を簡約
+- `numeric`: 数値近似
+
+```bash
+npm run cli -- 'Factorial(5)'
+# Output: 120
+
+npm run cli -- 'Add(x, x)' --operation simplify
+# Output: ["Multiply",2,"x"]
+
+npm run cli -- 'Divide(1, 3)' --operation numeric
+# Output: "0.(3)"
+```
+
+基本的なMathJSON標準ライブラリの演算をそのままMatra記法で利用できます。
+
+- 算術: `Add`, `Subtract`, `Multiply`, `Divide`, `Power`, `Sqrt`, `Exp`, `Log`, `Abs`, `Factorial`
+- 定数: `Pi`, `ExponentialE`, `ImaginaryUnit`
+- 三角関数: `Sin`, `Cos`, `Tan` など
+- 比較: `Equal`, `NotEqual`, `Less`, `LessEqual`, `Greater`, `GreaterEqual`
+
 #### 使用例
 
 ```bash
