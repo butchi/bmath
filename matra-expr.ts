@@ -5,7 +5,7 @@ import { astToTeX } from "./ast-to-tex"
 import { texToAst } from "./tex-to-ast"
 import { int, plus, power, sym, times, call } from "./expr"
 import { toMorphionForm } from "./utils"
-import { parse as parseMatra } from "./matra-parser.mjs"
+import { parse as parseMatra } from "./matra-parser.cjs"
 
 type ExprMatraHead = "Integer" | "Symbol" | "Plus" | "Times" | "Power" | "Call"
 type ExprMatraNode = { head: ExprMatraHead, attributes: Record<string, any>, children: ExprMatraNode[] }

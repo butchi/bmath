@@ -19,7 +19,7 @@
   },
   "scripts": {
     "start": "tsx index.ts",
-    "build:matra-parser": "peggy --format es --dts --output matra-parser.mjs matra-parser.peggy && mv matra-parser.d.ts matra-parser.d.mts && peggy --format commonjs --dts --output matra-parser.cjs matra-parser.peggy && mv matra-parser.d.ts matra-parser.d.cts",
+    "build:matra-parser": "peggy --format commonjs --dts --output matra-parser.cjs matra-parser.peggy && mv matra-parser.d.ts matra-parser.d.cts",
     "cli": "tsx cli.ts",
     "test": "jest"
   },
