@@ -1,3 +1,5 @@
+# bmathインターフェース
+
 ## コマンド・ページインターフェース
 
 bmathは、TeX数式処理を行うためのCLIツールとWebUIを提供します。
@@ -14,6 +16,7 @@ npm run cli -- "2x + 1"
 #### オプション
 
 **`--mode`**: 出力形式モード
+
 - `conventional` (デフォルト): 従来的な表記
 - `consistent`: 一貫した表記（cdot を使用）
 
@@ -23,6 +26,7 @@ npm run cli -- "2x" --mode consistent
 ```
 
 **`--output`**: 出力形式
+
 - `tex` (デフォルト): TeX形式
 - `expr`: Expr表現（数式オブジェクト）
 - `formula`: Formula形式（JSON）
@@ -78,7 +82,7 @@ npm run cli -- --help
 
 ### 処理パイプライン
 
-```
+```plain
 TeX入力
   ↓
 texToAst() - TeX → Matra AST
