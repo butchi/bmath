@@ -5,7 +5,15 @@ import { astToTeX } from "./ast-to-tex"
 import { texToAst } from "./tex-to-ast"
 import { int, plus, power, sym, times, call } from "./expr"
 import { toMorphionForm } from "./utils"
-import { parse as parseMatra } from "../parser/matra-parser.cjs"
+import parser from "../parser/matra-parser.cjs"
+
+const parseMatra = (source: string): MatraNode => {
+  try {
+    return parser.parse(source)
+  } catch (error) {
+    throw new Error(`Failed to parse Matra expression: ${error}`)
+  }
+}
 
 type ExprMatraHead = "Integer" | "Symbol" | "Plus" | "Times" | "Power" | "Call"
 type ExprMatraNode = { head: ExprMatraHead, attributes: Record<string, any>, children: ExprMatraNode[] }
