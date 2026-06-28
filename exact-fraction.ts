@@ -77,11 +77,11 @@ function gcdBigInt(a: bigint, b: bigint): bigint {
 }
 
 function intOrRatParts(e: Expr): RationalParts | null {
-  if (e.kind === "Integer") {
-    return { num: e.value, den: 1n };
+  if (e.head === "Integer") {
+    return { num: e.attributes.value, den: 1n };
   }
-  if (e.kind === "Rational") {
-    return normalizeFraction(e.num, e.den);
+  if (e.head === "Rational") {
+    return normalizeFraction(e.attributes.num, e.attributes.den);
   }
   return null;
 }

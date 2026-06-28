@@ -111,19 +111,19 @@ function axisUnitAndMagnitude(baseExpr: Expr): { unit: ComplexNumber; magnitude:
 
   const imagPart = (expr: Expr): RationalParts | null => intOrRatParts(expr);
 
-  if (baseExpr.kind === "GaussianInteger") {
-    if (baseExpr.re === 0n && baseExpr.im !== 0n) {
+  if (baseExpr.head === "GaussianInteger") {
+    if (baseExpr.attributes.re === 0n && baseExpr.attributes.im !== 0n) {
       return {
-        unit: baseExpr.im < 0n ? { re: 0, im: -1 } : { re: 0, im: 1 },
-        magnitude: { num: absBigInt(baseExpr.im), den: 1n },
+        unit: baseExpr.attributes.im < 0n ? { re: 0, im: -1 } : { re: 0, im: 1 },
+        magnitude: { num: absBigInt(baseExpr.attributes.im), den: 1n },
       };
     }
     return null;
   }
 
-  if (baseExpr.kind === "Complex") {
-    const re = imagPart(baseExpr.re);
-    const im = imagPart(baseExpr.im);
+  if (baseExpr.head === "Complex") {
+    const re = imagPart(baseExpr.attributes.re);
+    const im = imagPart(baseExpr.attributes.im);
     if (!re || !im) {
       return null;
     }

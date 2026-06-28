@@ -1,13 +1,13 @@
 import { Expr } from "./types";
 
 function normalize(m: Expr): Expr {
-  if (m.kind === "Plus") {
+  if (m.head === "Plus") {
     // 全ての整数項を合計
     let integerSum = 0n;
     const otherTerms: Expr[] = [];
-    for (const term of m.terms) {
-      if (term.kind === "Integer") {
-        integerSum += term.value;
+    for (const term of m.attributes.terms) {
+      if (term.head === "Integer") {
+        integerSum += term.attributes.value;
       } else {
         otherTerms.push(term);
       }
@@ -21,15 +21,15 @@ function normalize(m: Expr): Expr {
     } else if (allTerms.length === 1) {
       return allTerms[0];
     } else {
-      return { kind: "Plus", terms: allTerms };
+      return { head: "Plus", attributes: { terms: allTerms } };
     }
-  } else if (m.kind === "Times") {
+  } else if (m.head === "Times") {
     // 全ての整数項を乗算
     let integerProduct = 1n;
     const otherFactors: Expr[] = [];
-    for (const factor of m.factors) {
-      if (factor.kind === "Integer") {
-        integerProduct *= factor.value;
+    for (const factor of m.attributes.factors) {
+      if (factor.head === "Integer") {
+        integerProduct *= factor.attributes.value;
       } else {
         otherFactors.push(factor);
       }
@@ -47,35 +47,34 @@ function normalize(m: Expr): Expr {
     } else if (allFactors.length === 1) {
       return allFactors[0];
     } else {
-      return { kind: "Times", factors: allFactors };
+      return { head: "Times", attributes: { factors: allFactors } };
     }
-  } else if (m.kind === "Power") {
-    const base = m.base;
-    const exp = m.exp;
+  } else if (m.head === "Power") {
+    const base = m.attributes.base;
+    const exp = m.attributes.exp;
 
-    if (base.kind === "Integer" && exp.kind === "Integer") {
-      if (exp.value === 0n) {
+    if (base.head === "Integer" && exp.head === "Integer") {
+      if (exp.attributes.value === 0n) {
         return int(1n);
       }
 
-      if (base.value === 0n) {
+      if (base.attributes.value === 0n) {
         return int(0n);
       }
     }
 
     return {
-      kind: "Power",
-      base,
-      exp,
+      head: "Power",
+      attributes: { base, exp },
     };
-  } else if (m.kind === "Call") {
+  } else if (m.head === "Call") {
     return m;
   } else {
     return m;
   }
 }
 
-const int = (value: bigint): Expr => ({ kind: "Integer", value });
+const int = (value: bigint): Expr => ({ head: "Integer", attributes: { value } });
 
 const gcd = (a: bigint, b: bigint): bigint => {
   a = a < 0n ? -a : a;
@@ -103,49 +102,47 @@ const normalizeRational = (num: bigint, den: bigint): Expr => {
     d = -d;
   }
   
-  return { kind: "Rational", num: n, den: d };
+  return { head: "Rational", attributes: { num: n, den: d } };
 };
 
-const sym = (name: string): Expr => ({ kind: "Symbol", name: name });
+const sym = (name: string): Expr => ({ head: "Symbol", attributes: { name } });
 
 const rat = (num: bigint, den: bigint): Expr => {
   return normalizeRational(num, den);
 };
 
 const gi = (re: bigint, im: bigint): Expr => {
-  return { kind: "GaussianInteger", re, im };
+  return { head: "GaussianInteger", attributes: { re, im } };
 };
 
 const complex = (re: Expr, im: Expr): Expr => {
-  return { kind: "Complex", re, im };
+  return { head: "Complex", attributes: { re, im } };
 };
 
 const power = (base: Expr, exp: Expr): Expr => {
   return normalize({
-    kind: "Power",
-    base,
-    exp,
+    head: "Power",
+    attributes: { base, exp },
   });
 };
 
 const plus = (...terms: Expr[]): Expr => {
   return normalize({
-    kind: "Plus",
-    terms: terms,
+    head: "Plus",
+    attributes: { terms },
   });
 }
 
 const times = (...factors: Expr[]): Expr => {
   return normalize({
-    kind: "Times",
-    factors: factors,
+    head: "Times",
+    attributes: { factors },
   });
 }
 
 const call = (fn: string, arg: Expr): Expr => ({
-  kind: "Call",
-  fn,
-  arg,
+  head: "Call",
+  attributes: { fn, arg },
 });
 
 export { int, sym, rat, gi, complex, power, plus, times, call, normalizeRational };

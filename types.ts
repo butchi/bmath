@@ -1,23 +1,25 @@
 // 第1層: 一般式
 type Expr =
-  | { kind: "Integer"; value: bigint }
-  | { kind: "Rational"; num: bigint; den: bigint }
-  | { kind: "GaussianInteger"; re: bigint; im: bigint }
-  | { kind: "Complex"; re: Expr; im: Expr }
-  | { kind: "Symbol"; name: string }
-  | { kind: "Plus"; terms: Expr[] }
-  | { kind: "Times"; factors: Expr[] }
-  | { kind: "Power"; base: Expr; exp: Expr }
-  | { kind: "Call"; fn: string; arg: Expr };
+  | { head: "Integer"; attributes: { value: bigint } }
+  | { head: "Rational"; attributes: { num: bigint; den: bigint } }
+  | { head: "GaussianInteger"; attributes: { re: bigint; im: bigint } }
+  | { head: "Complex"; attributes: { re: Expr; im: Expr } }
+  | { head: "Symbol"; attributes: { name: string } }
+  | { head: "Plus"; attributes: { terms: Expr[] } }
+  | { head: "Times"; attributes: { factors: Expr[] } }
+  | { head: "Power"; attributes: { base: Expr; exp: Expr } }
+  | { head: "Call"; attributes: { fn: string; arg: Expr } };
 
 // 第2層: モーフィオン標準形
 type MorphionForm = {
-  kind: "MorphionForm";
-  base: Expr;
-  terms: Map<string, {
-    key: Expr;
-    coeff: Expr;
-  }>;
+  head: "MorphionForm";
+  attributes: {
+    base: Expr;
+    terms: Map<string, {
+      key: Expr;
+      coeff: Expr;
+    }>;
+  };
 };
 
 export type { Expr, MorphionForm };

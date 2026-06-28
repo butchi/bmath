@@ -338,7 +338,7 @@
       },
       texToExpr: (tex) => {
         // Mock - in real implementation would be actual function
-        return `Expr: {kind: "${tex.includes("+") ? "Plus" : "Symbol"}"}`
+        return `Expr: {head: "${tex.includes("+") ? "Plus" : "Symbol"}"}`
       },
       texToFormulaNode: (tex) => {
         return ["Formula", {}, [["Symbol", { name: "x" }, []]]]

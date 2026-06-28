@@ -1,6 +1,9 @@
 import { Expr, MorphionForm } from "./types";
 import { replacer } from "./json";
-import { int, sym, plus, times } from "./expr";
+import { int, sym } from "./expr";
+import { ComputeEngine } from "@cortex-js/compute-engine";
+
+const compute = (op: string, ...args: any[]) => new ComputeEngine().parse(`${op}(${args.join(', ')})`).evaluate();
 
 type MorphionTerm = { key: Expr; coeff: Expr };
 
@@ -12,7 +15,7 @@ function morphion(
   for (const entry of entries) {
     mergeTerm(terms, entry);
   }
-  return { kind: "MorphionForm", base, terms };
+  return { head: "MorphionForm", attributes: { base, terms } };
 }
 
 function poly(
@@ -30,27 +33,21 @@ function keyOf(e: Expr): string {
 
 function mergeTerm(terms: Map<string, MorphionTerm>, term: MorphionTerm): void {
   const keyStr = keyOf(term.key);
-  if (terms.has(keyStr)) {
-    const existing = terms.get(keyStr)!;
-    terms.set(keyStr, {
-      key: term.key,
-      coeff: plus(existing.coeff, term.coeff),
-    });
-    return;
-  }
-
-  terms.set(keyStr, term);
+  const existing = terms.get(keyStr);
+  terms.set(keyStr, existing
+    ? { key: term.key, coeff: compute("Add", existing.coeff, term.coeff) as unknown as Expr }
+    : term);
 }
 
 function assertSameBase(a: MorphionForm, b: MorphionForm, operation: "add" | "multiply"): Expr {
-  if (!sameExpr(a.base, b.base)) {
+  if (!sameExpr(a.attributes.base, b.attributes.base)) {
     if (operation === "add") {
       throw new Error("Cannot add MorphionForms with different bases");
     }
     throw new Error("Cannot multiply MorphionForms with different bases");
   }
 
-  return a.base;
+  return a.attributes.base;
 }
 
 function sameExpr(a: Expr, b: Expr): boolean {
@@ -62,11 +59,11 @@ function addMorphionForms(a: MorphionForm, b: MorphionForm): MorphionForm {
   const base = assertSameBase(a, b, "add");
   const terms = new Map<string, MorphionTerm>();
 
-  for (const term of a.terms.values()) {
+  for (const term of a.attributes.terms.values()) {
     terms.set(keyOf(term.key), term);
   }
 
-  for (const term of b.terms.values()) {
+  for (const term of b.attributes.terms.values()) {
     mergeTerm(terms, term);
   }
 
@@ -78,11 +75,11 @@ function mulMorphionForms(a: MorphionForm, b: MorphionForm): MorphionForm {
   const base = assertSameBase(a, b, "multiply");
   const terms = new Map<string, MorphionTerm>();
 
-  for (const { key: keyA, coeff: coeffA } of a.terms.values()) {
-    for (const { key: keyB, coeff: coeffB } of b.terms.values()) {
+  for (const { key: keyA, coeff: coeffA } of a.attributes.terms.values()) {
+    for (const { key: keyB, coeff: coeffB } of b.attributes.terms.values()) {
       mergeTerm(terms, {
-        key: plus(keyA, keyB),
-        coeff: times(coeffA, coeffB),
+        key: compute("Add", keyA, keyB) as unknown as Expr,
+        coeff: compute("Multiply", coeffA, coeffB) as unknown as Expr,
       });
     }
   }

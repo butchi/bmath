@@ -1,7 +1,7 @@
 import type { MatraNode } from "./ast-to-tex"
 
-type TokenKind = "number" | "ident" | "command" | "symbol" | "eof"
-type Token = { kind: TokenKind; value: string }
+type TokenHead = "number" | "ident" | "command" | "symbol" | "eof"
+type Token = { head: TokenHead; attributes: { value: string } }
 
 class Tokenizer {
   private readonly src: string
@@ -14,7 +14,7 @@ class Tokenizer {
   next(): Token {
     this.skipSpaces()
     if (this.pos >= this.src.length) {
-      return { kind: "eof", value: "" }
+      return { head: "eof", attributes: { value: "" } }
     }
 
     const ch = this.src[this.pos]
@@ -26,7 +26,7 @@ class Tokenizer {
         name += this.src[this.pos]
         this.pos += 1
       }
-      return { kind: "command", value: name }
+      return { head: "command", attributes: { value: name } }
     }
 
     if (/[0-9]/.test(ch)) {
@@ -35,7 +35,7 @@ class Tokenizer {
         value += this.src[this.pos]
         this.pos += 1
       }
-      return { kind: "number", value }
+      return { head: "number", attributes: { value } }
     }
 
     if (/[A-Za-z]/.test(ch)) {
@@ -44,11 +44,11 @@ class Tokenizer {
         value += this.src[this.pos]
         this.pos += 1
       }
-      return { kind: "ident", value }
+      return { head: "ident", attributes: { value } }
     }
 
     this.pos += 1
-    return { kind: "symbol", value: ch }
+    return { head: "symbol", attributes: { value: ch } }
   }
 
   private skipSpaces(): void {
@@ -80,9 +80,9 @@ function texToAst(input: string): MatraNode {
   const tokenizer = new Tokenizer(input)
   let current = tokenizer.next()
 
-  function eat(kind: TokenKind, value?: string): Token {
-    if (current.kind !== kind || (value !== undefined && current.value !== value)) {
-      throw new Error(`Unexpected token: ${current.kind} ${current.value}`)
+  function eat(head: TokenHead, value?: string): Token {
+    if (current.head !== head || (value !== undefined && current.attributes.value !== value)) {
+      throw new Error(`Unexpected token: ${current.head} ${current.attributes.value}`)
     }
     const t = current
     current = tokenizer.next()
@@ -90,13 +90,13 @@ function texToAst(input: string): MatraNode {
   }
 
   function isStartOfPrimary(t: Token): boolean {
-    if (t.kind === "number" || t.kind === "ident" || t.kind === "command") return true
-    if (t.kind === "symbol" && (t.value === "(" || t.value === "{")) return true
+    if (t.head === "number" || t.head === "ident" || t.head === "command") return true
+    if (t.head === "symbol" && (t.attributes.value === "(" || t.attributes.value === "{")) return true
     return false
   }
 
   function matchSymbol(value: string): boolean {
-    return current.kind === "symbol" && current.value === value
+    return current.head === "symbol" && current.attributes.value === value
   }
 
   function parseExpression(): MatraNode {
@@ -106,8 +106,8 @@ function texToAst(input: string): MatraNode {
   function parseAdd(): MatraNode {
     const terms: MatraNode[] = [parseMul()]
 
-    while (current.kind === "symbol" && (current.value === "+" || current.value === "-")) {
-      const op = current.value
+    while (current.head === "symbol" && (current.attributes.value === "+" || current.attributes.value === "-")) {
+      const op = current.attributes.value
       eat("symbol", op)
       const rhs = parseMul()
       if (op === "+") {
@@ -124,7 +124,7 @@ function texToAst(input: string): MatraNode {
     const factors: MatraNode[] = [parsePow()]
 
     while (true) {
-      if (current.kind === "command" && current.value === "cdot") {
+      if (current.head === "command" && current.attributes.value === "cdot") {
         eat("command", "cdot")
         factors.push(parsePow())
         continue
@@ -178,13 +178,13 @@ function texToAst(input: string): MatraNode {
   }
 
   function parsePrimary(): MatraNode {
-    if (current.kind === "number") {
-      const v = eat("number").value
+    if (current.head === "number") {
+      const v = eat("number").attributes.value
       return constNode(v)
     }
 
-    if (current.kind === "ident") {
-      const name = eat("ident").value
+    if (current.head === "ident") {
+      const name = eat("ident").attributes.value
       const base = name === "e" ? constNode("E") : varNode(name)
 
       if (name !== "e" && matchSymbol("(")) {
@@ -195,8 +195,8 @@ function texToAst(input: string): MatraNode {
       return base
     }
 
-    if (current.kind === "command") {
-      const cmd = eat("command").value
+    if (current.head === "command") {
+      const cmd = eat("command").attributes.value
 
       if (cmd === "pi") {
         return constNode("Pi")
@@ -227,12 +227,12 @@ function texToAst(input: string): MatraNode {
       return parseGroup("{")
     }
 
-    throw new Error(`Unexpected token in primary: ${current.kind} ${current.value}`)
+    throw new Error(`Unexpected token in primary: ${current.head} ${current.attributes.value}`)
   }
 
   const ast = parseExpression()
-  if (current.kind !== "eof") {
-    throw new Error(`Unexpected trailing token: ${current.kind} ${current.value}`)
+  if (current.head !== "eof") {
+    throw new Error(`Unexpected trailing token: ${current.head} ${current.attributes.value}`)
   }
   return ast
 }

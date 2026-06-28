@@ -88,9 +88,9 @@ describe("matra-expr bridge", () => {
     const formula = ["Formula", {}, [["Power", {}, [["Symbol", { name: "x" }, []], ["Integer", { value: "2" }, []]]]]] as any
     const morphion = formulaNodeToMorphion(formula)
 
-    expect(morphion.kind).toBe("MorphionForm")
-    expect(morphion.base).toEqual(sym("x"))
-    expect(Array.from(morphion.terms.values())).toEqual([{ key: int(2n), coeff: int(1n) }])
+    expect(morphion.head).toBe("MorphionForm")
+    expect(morphion.attributes.base).toEqual(sym("x"))
+    expect(Array.from(morphion.attributes.terms.values())).toEqual([{ key: int(2n), coeff: int(1n) }])
   })
 
   test("TeX AST node -> Expr", () => {
@@ -112,9 +112,9 @@ describe("matra-expr bridge", () => {
 
   test("TeX string -> MorphionForm", () => {
     const morphion = texToMorphion("x^{2}")
-    expect(morphion.kind).toBe("MorphionForm")
-    expect(morphion.base).toEqual(sym("x"))
-    expect(Array.from(morphion.terms.values())).toEqual([{ key: int(2n), coeff: int(1n) }])
+    expect(morphion.head).toBe("MorphionForm")
+    expect(morphion.attributes.base).toEqual(sym("x"))
+    expect(Array.from(morphion.attributes.terms.values())).toEqual([{ key: int(2n), coeff: int(1n) }])
   })
 
   test("TeX sin/cos -> Expr Call (not an error anymore)", () => {
@@ -124,7 +124,7 @@ describe("matra-expr bridge", () => {
 
   test("Call construction", () => {
     const expr = call("sin", sym("x"))
-    expect(expr).toEqual({ kind: "Call", fn: "sin", arg: sym("x") })
+    expect(expr).toEqual({ head: "Call", attributes: { fn: "sin", arg: sym("x") } })
   })
 
   test("Call to expression string", () => {

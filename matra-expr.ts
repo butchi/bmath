@@ -15,31 +15,31 @@ function isExprMatraNode(node: MatraNode): node is ExprMatraNode {
 }
 
 function exprToMatraExprNode(expr: Expr): ExprMatraNode {
-  if (expr.kind === "Integer") {
-    return ["Integer", { value: expr.value.toString() }, []]
+  if (expr.head === "Integer") {
+    return ["Integer", { value: expr.attributes.value.toString() }, []]
   }
 
-  if (expr.kind === "Symbol") {
-    return ["Symbol", { name: expr.name }, []]
+  if (expr.head === "Symbol") {
+    return ["Symbol", { name: expr.attributes.name }, []]
   }
 
-  if (expr.kind === "Plus") {
-    return ["Plus", {}, expr.terms.map(exprToMatraExprNode)]
+  if (expr.head === "Plus") {
+    return ["Plus", {}, expr.attributes.terms.map(exprToMatraExprNode)]
   }
 
-  if (expr.kind === "Times") {
-    return ["Times", {}, expr.factors.map(exprToMatraExprNode)]
+  if (expr.head === "Times") {
+    return ["Times", {}, expr.attributes.factors.map(exprToMatraExprNode)]
   }
 
-  if (expr.kind === "Power") {
-    return ["Power", {}, [exprToMatraExprNode(expr.base), exprToMatraExprNode(expr.exp)]]
+  if (expr.head === "Power") {
+    return ["Power", {}, [exprToMatraExprNode(expr.attributes.base), exprToMatraExprNode(expr.attributes.exp)]]
   }
 
-  if (expr.kind === "Call") {
-    return ["Call", {}, [["Symbol", { name: expr.fn }, []], exprToMatraExprNode(expr.arg)]]
+  if (expr.head === "Call") {
+    return ["Call", {}, [["Symbol", { name: expr.attributes.fn }, []], exprToMatraExprNode(expr.attributes.arg)]]
   }
 
-  throw new Error(`Unsupported Expr kind for Matra conversion: ${expr.kind}`)
+  throw new Error(`Unsupported Expr head for Matra conversion: ${expr.head}`)
 }
 
 function matraExprNodeToExpr(node: ExprMatraNode): Expr {
@@ -49,22 +49,22 @@ function matraExprNodeToExpr(node: ExprMatraNode): Expr {
     if (typeof props.value !== "string") {
       throw new Error("Invalid Integer node: props.value must be string")
     }
-    return { kind: "Integer", value: BigInt(props.value) }
+    return { head: "Integer", attributes: { value: BigInt(props.value) } }
   }
 
   if (tag === "Symbol") {
     if (typeof props.name !== "string") {
       throw new Error("Invalid Symbol node: props.name must be string")
     }
-    return { kind: "Symbol", name: props.name }
+    return { head: "Symbol", attributes: { name: props.name } }
   }
 
   if (tag === "Plus") {
-    return { kind: "Plus", terms: body.map(matraExprNodeToExpr) }
+    return { head: "Plus", attributes: { terms: body.map(matraExprNodeToExpr) } }
   }
 
   if (tag === "Times") {
-    return { kind: "Times", factors: body.map(matraExprNodeToExpr) }
+    return { head: "Times", attributes: { factors: body.map(matraExprNodeToExpr) } }
   }
 
   if (tag === "Power") {
@@ -72,9 +72,11 @@ function matraExprNodeToExpr(node: ExprMatraNode): Expr {
       throw new Error("Invalid Power node: body length must be 2")
     }
     return {
-      kind: "Power",
-      base: matraExprNodeToExpr(body[0]),
-      exp: matraExprNodeToExpr(body[1]),
+      head: "Power",
+      attributes: {
+        base: matraExprNodeToExpr(body[0]),
+        exp: matraExprNodeToExpr(body[1]),
+      },
     }
   }
 
@@ -87,9 +89,11 @@ function matraExprNodeToExpr(node: ExprMatraNode): Expr {
       throw new Error("Call function must be a Symbol node")
     }
     return {
-      kind: "Call",
-      fn: String((fnNode as any)[1].name),
-      arg: matraExprNodeToExpr(body[1]),
+      head: "Call",
+      attributes: {
+        fn: String((fnNode as any)[1].name),
+        arg: matraExprNodeToExpr(body[1]),
+      },
     }
   }
 

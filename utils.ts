@@ -15,29 +15,29 @@ function asComplexOrZero(n: Expr | MorphionForm): ComplexNumber {
 }
 
 function toNum(n: Expr | MorphionForm): number {
-  if (n.kind === "Integer") {
-    return Number(n.value);
-  } else if (n.kind === "Rational") {
-    return Number(n.num) / Number(n.den);
-  } else if (n.kind === "GaussianInteger") {
+  if (n.head === "Integer") {
+    return Number(n.attributes.value);
+  } else if (n.head === "Rational") {
+    return Number(n.attributes.num) / Number(n.attributes.den);
+  } else if (n.head === "GaussianInteger") {
     return NaN; // ガウス整数は数値に変換できないのでNaNを返す
-  } else if (n.kind === "Complex") {
+  } else if (n.head === "Complex") {
     return NaN; // 複素数は数値に変換できないのでNaNを返す
-  } else if (n.kind === "Power") {
-    return Math.pow(toNum(n.base), toNum(n.exp));
-  } else if (n.kind === "Plus") {
-    return n.terms.reduce((sum, term) => sum + toNum(term), 0);
-  } else if (n.kind === "Times") {
-    return n.factors.reduce((product, factor) => product * toNum(factor), 1);
-  } else if (n.kind === "MorphionForm") {
+  } else if (n.head === "Power") {
+    return Math.pow(toNum(n.attributes.base), toNum(n.attributes.exp));
+  } else if (n.head === "Plus") {
+    return n.attributes.terms.reduce((sum, term) => sum + toNum(term), 0);
+  } else if (n.head === "Times") {
+    return n.attributes.factors.reduce((product, factor) => product * toNum(factor), 1);
+  } else if (n.head === "MorphionForm") {
     let result = 0;
-    for (const { key, coeff } of n.terms.values()) {
-      result += toNum(coeff) * Math.pow(toNum(n.base), toNum(key));
+    for (const { key, coeff } of n.attributes.terms.values()) {
+      result += toNum(coeff) * Math.pow(toNum(n.attributes.base), toNum(key));
     }
     return result;
-  } else if (n.kind === "Symbol") {
+  } else if (n.head === "Symbol") {
     return NaN; // シンボルは数値に変換できないのでNaNを返す
-  } else if (n.kind === "Call") {
+  } else if (n.head === "Call") {
     return NaN; // 関数呼び出しは数値に変換できないのでNaNを返す
   } else {
     throw new Error("Unsupported Morphion type for toNum");
@@ -45,65 +45,65 @@ function toNum(n: Expr | MorphionForm): number {
 }
 
 function gaussianToComplex(n: Expr): { re: number; im: number } {
-  if (n.kind === "GaussianInteger") {
-    return { re: Number(n.re), im: Number(n.im) };
+  if (n.head === "GaussianInteger") {
+    return { re: Number(n.attributes.re), im: Number(n.attributes.im) };
   } else {
     throw new Error("Unsupported Expr type for gaussianToComplex");
   }
 }
 
 function toComplex(n: Expr | MorphionForm): { re: number; im: number } | MorphionForm {
-  if (n.kind === "Integer") {
-    return { re: Number(n.value), im: 0 };
-  } else if (n.kind === "Rational") {
-    return { re: Number(n.num) / Number(n.den), im: 0 };
-  } else if (n.kind === "GaussianInteger") {
+  if (n.head === "Integer") {
+    return { re: Number(n.attributes.value), im: 0 };
+  } else if (n.head === "Rational") {
+    return { re: Number(n.attributes.num) / Number(n.attributes.den), im: 0 };
+  } else if (n.head === "GaussianInteger") {
     return gaussianToComplex(n);
-  } else if (n.kind === "Complex") {
-    const rePart = asComplexOrZero(n.re);
-    const imPart = asComplexOrZero(n.im);
+  } else if (n.head === "Complex") {
+    const rePart = asComplexOrZero(n.attributes.re);
+    const imPart = asComplexOrZero(n.attributes.im);
     return {
       re: rePart.re - imPart.im,
       im: rePart.im + imPart.re,
     };
-  } else if (n.kind === "MorphionForm") {
+  } else if (n.head === "MorphionForm") {
     return n; // MorphionFormはそのまま返す
-  } else if (n.kind === "Symbol") {
+  } else if (n.head === "Symbol") {
     return { re: NaN, im: NaN }; // シンボルは複素数に変換できないのでNaNを返す
-  } else if (n.kind === "Power") {
-    const exactReal = exactRealRationalPower(n.base, n.exp);
+  } else if (n.head === "Power") {
+    const exactReal = exactRealRationalPower(n.attributes.base, n.attributes.exp);
     if (exactReal !== null) {
       return exactReal;
     }
 
-    const exactAxis = exactAxisUnitMagnitudePower(n.base, n.exp);
+    const exactAxis = exactAxisUnitMagnitudePower(n.attributes.base, n.attributes.exp);
     if (exactAxis !== null) {
       return exactAxis;
     }
 
-    const base = asComplexOrZero(n.base);
+    const base = asComplexOrZero(n.attributes.base);
 
-    const exactUnitRoot = exactUnitRootPower(base, n.exp);
+    const exactUnitRoot = exactUnitRootPower(base, n.attributes.exp);
     if (exactUnitRoot !== null) {
       return exactUnitRoot;
     }
 
-    if (n.exp.kind === "Integer") {
-      return powComplexInteger(base, n.exp.value);
+    if (n.attributes.exp.head === "Integer") {
+      return powComplexInteger(base, n.attributes.exp.attributes.value);
     }
 
-    if (n.exp.kind === "Rational") {
-      if (n.exp.den === 1n) {
-        return powComplexInteger(base, n.exp.num);
+    if (n.attributes.exp.head === "Rational") {
+      if (n.attributes.exp.attributes.den === 1n) {
+        return powComplexInteger(base, n.attributes.exp.attributes.num);
       }
 
       // principal square root of -1 is exactly i
-      if (n.exp.num === 1n && n.exp.den === 2n && base.re === -1 && base.im === 0) {
+      if (n.attributes.exp.attributes.num === 1n && n.attributes.exp.attributes.den === 2n && base.re === -1 && base.im === 0) {
         return { re: 0, im: 1 };
       }
     }
 
-    const expNum = toNum(n.exp);
+    const expNum = toNum(n.attributes.exp);
     if (base.im === 0 && base.re >= 0) {
       return { re: Math.pow(base.re, expNum), im: 0 };
     }
@@ -117,10 +117,10 @@ function toComplex(n: Expr | MorphionForm): { re: number; im: number } | Morphio
       re: rExp * Math.cos(thetaExp),
       im: rExp * Math.sin(thetaExp),
     };
-  } else if (n.kind === "Plus") {
+  } else if (n.head === "Plus") {
     let re = 0;
     let im = 0;
-    for (const term of n.terms) {
+    for (const term of n.attributes.terms) {
       const termCplx = toComplex(term);
       const termCplxObj = (typeof termCplx === "object" && "re" in termCplx) ? termCplx : { re: 0, im: 0 };
       re += typeof termCplxObj.re === "number" ? termCplxObj.re : 0;
@@ -128,10 +128,10 @@ function toComplex(n: Expr | MorphionForm): { re: number; im: number } | Morphio
     }
     
     return { re, im };
-  } else if (n.kind === "Times") {
+  } else if (n.head === "Times") {
     let re = 1;
     let im = 0;
-    for (const factor of n.factors) {
+    for (const factor of n.attributes.factors) {
       const factorCplx = toComplex(factor);
       const factorCplxObj = (typeof factorCplx === "object" && "re" in factorCplx) ? factorCplx : { re: 0, im: 0 };
       const re_val = typeof factorCplxObj.re === "number" ? factorCplxObj.re : 0;
@@ -143,7 +143,7 @@ function toComplex(n: Expr | MorphionForm): { re: number; im: number } | Morphio
     }
     
     return { re, im };
-  } else if (n.kind === "Call") {
+  } else if (n.head === "Call") {
     return { re: NaN, im: NaN }; // 関数呼び出しは複素数に変換できないのでNaNを返す
   } else {
     throw new Error("Unsupported Morphion type for toComplex");
@@ -151,24 +151,24 @@ function toComplex(n: Expr | MorphionForm): { re: number; im: number } | Morphio
 }
 
 function toExpression(n: Expr | MorphionForm): string {
-  if (n.kind === "Integer") {
-    return n.value.toString();
-  } else if (n.kind === "Rational") {
-    return `(${toExpression(int(n.num))}/${toExpression(int(n.den))})`;
-  } else if (n.kind === "Complex") {
-    return `(${toExpression(n.re)} + ${toExpression(n.im)}i)`;
-  } else if (n.kind === "Power") {
-    return `(${toExpression(n.base)}^(${toExpression(n.exp)}))`;
-  } else if (n.kind === "Plus") {
-    return n.terms.map(term => toExpression(term)).join(" + ");
-  } else if (n.kind === "Times") {
-    return n.factors.map(factor => toExpression(factor)).join(" * ");
-  } else if (n.kind === "MorphionForm") {
-    return Array.from(n.terms.values()).map(({ key, coeff }: { key: Expr; coeff: Expr }) => `(${toExpression(coeff)}) * (${toExpression(n.base)}^(${toExpression(key)}))`).join(" + ");
-  } else if (n.kind === "Symbol") {
-    return n.name;
-  } else if (n.kind === "Call") {
-    return `${n.fn}(${toExpression(n.arg)})`;
+  if (n.head === "Integer") {
+    return n.attributes.value.toString();
+  } else if (n.head === "Rational") {
+    return `(${toExpression(int(n.attributes.num))}/${toExpression(int(n.attributes.den))})`;
+  } else if (n.head === "Complex") {
+    return `(${toExpression(n.attributes.re)} + ${toExpression(n.attributes.im)}i)`;
+  } else if (n.head === "Power") {
+    return `(${toExpression(n.attributes.base)}^(${toExpression(n.attributes.exp)}))`;
+  } else if (n.head === "Plus") {
+    return n.attributes.terms.map(term => toExpression(term)).join(" + ");
+  } else if (n.head === "Times") {
+    return n.attributes.factors.map(factor => toExpression(factor)).join(" * ");
+  } else if (n.head === "MorphionForm") {
+    return Array.from(n.attributes.terms.values()).map(({ key, coeff }: { key: Expr; coeff: Expr }) => `(${toExpression(coeff)}) * (${toExpression(n.attributes.base)}^(${toExpression(key)}))`).join(" + ");
+  } else if (n.head === "Symbol") {
+    return n.attributes.name;
+  } else if (n.head === "Call") {
+    return `${n.attributes.fn}(${toExpression(n.attributes.arg)})`;
   } else {
     throw new Error("Unsupported Morphion type for toExpression");
   }
@@ -176,8 +176,8 @@ function toExpression(n: Expr | MorphionForm): string {
 
 function rationalAsMorphion(num: bigint, den: bigint): MorphionForm {
   const frac = normalizeRational(num, den);
-  if (frac.kind === "Rational") {
-    return morphion(int(frac.den), [{ key: int(-1n), coeff: int(frac.num) }]);
+  if (frac.head === "Rational") {
+    return morphion(int(frac.attributes.den), [{ key: int(-1n), coeff: int(frac.attributes.num) }]);
   }
   return morphion(int(1n), [{ key: int(0n), coeff: frac }]);
 }
@@ -192,26 +192,26 @@ function complexAsMorphion(re: Expr, im: Expr): MorphionForm {
 }
 
 function toMorphionForm(n: Expr): MorphionForm {
-  if (n.kind === "Integer") {
+  if (n.head === "Integer") {
     return morphion(int(1n), [{ key: int(0n), coeff: n }]);
-  } else if (n.kind === "Rational") {
-    return rationalAsMorphion(n.num, n.den);
-  } else if (n.kind === "GaussianInteger") {
-    return complexAsMorphion(int(n.re), int(n.im));
-  } else if (n.kind === "Complex") {
-    return complexAsMorphion(n.re, n.im);
-  } else if (n.kind === "Power") {
-    if (n.base.kind === "Symbol" && n.base.name === "x") {
-      return morphion(sym("x"), [{ key: n.exp, coeff: int(1n) }]);
+  } else if (n.head === "Rational") {
+    return rationalAsMorphion(n.attributes.num, n.attributes.den);
+  } else if (n.head === "GaussianInteger") {
+    return complexAsMorphion(int(n.attributes.re), int(n.attributes.im));
+  } else if (n.head === "Complex") {
+    return complexAsMorphion(n.attributes.re, n.attributes.im);
+  } else if (n.head === "Power") {
+    if (n.attributes.base.head === "Symbol" && n.attributes.base.attributes.name === "x") {
+      return morphion(sym("x"), [{ key: n.attributes.exp, coeff: int(1n) }]);
     } else {
       throw new Error("Unsupported base for Power in toMorphionForm");
     }
-  } else if (n.kind === "Symbol") {
+  } else if (n.head === "Symbol") {
     return morphion(n, [{ key: int(0n), coeff: int(1n) }]);
-  } else if (n.kind === "Call") {
-    throw new Error(`Cannot morphionize Call: ${n.fn}`);
+  } else if (n.head === "Call") {
+    throw new Error(`Cannot morphionize Call: ${n.attributes.fn}`);
   } else {
-    throw new Error(`Cannot morphionize ${n.kind}`);
+    throw new Error(`Cannot morphionize ${n.head}`);
   }
 }
 
