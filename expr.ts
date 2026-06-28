@@ -2,19 +2,23 @@ import { Expr } from "./types";
 
 function normalize(m: Expr): Expr {
   if (m.head === "Plus") {
-    // 全ての整数項を合計
-    let integerSum = 0n;
+    let numericNum = 0n;
+    let numericDen = 1n;
     const otherTerms: Expr[] = [];
+
     for (const term of m.attributes.terms) {
       if (term.head === "Integer") {
-        integerSum += term.attributes.value;
+        numericNum += term.attributes.value * numericDen;
+      } else if (term.head === "Rational") {
+        numericNum = numericNum * term.attributes.den + term.attributes.num * numericDen;
+        numericDen *= term.attributes.den;
       } else {
         otherTerms.push(term);
       }
     }
-    
-    // 合計した整数がゼロでない場合は追加
-    const allTerms = integerSum !== 0n ? [int(integerSum), ...otherTerms] : otherTerms;
+
+    const numeric = numberExpr(numericNum, numericDen);
+    const allTerms = isZero(numeric) ? otherTerms : [numeric, ...otherTerms];
     
     if (allTerms.length === 0) {
       return int(0n);
@@ -24,23 +28,27 @@ function normalize(m: Expr): Expr {
       return { head: "Plus", attributes: { terms: allTerms } };
     }
   } else if (m.head === "Times") {
-    // 全ての整数項を乗算
-    let integerProduct = 1n;
+    let numericNum = 1n;
+    let numericDen = 1n;
     const otherFactors: Expr[] = [];
+
     for (const factor of m.attributes.factors) {
       if (factor.head === "Integer") {
-        integerProduct *= factor.attributes.value;
+        numericNum *= factor.attributes.value;
+      } else if (factor.head === "Rational") {
+        numericNum *= factor.attributes.num;
+        numericDen *= factor.attributes.den;
       } else {
         otherFactors.push(factor);
       }
     }
 
-    if (integerProduct === 0n) {
+    if (numericNum === 0n) {
       return int(0n);
     }
-    
-    // 乗算した整数が1でない場合は追加
-    const allFactors = integerProduct !== 1n ? [int(integerProduct), ...otherFactors] : otherFactors;
+
+    const numeric = numberExpr(numericNum, numericDen);
+    const allFactors = isOne(numeric) ? otherFactors : [numeric, ...otherFactors];
     
     if (allFactors.length === 0) {
       return int(1n);
@@ -104,6 +112,19 @@ const normalizeRational = (num: bigint, den: bigint): Expr => {
   
   return { head: "Rational", attributes: { num: n, den: d } };
 };
+
+const numberExpr = (num: bigint, den: bigint): Expr => {
+  const normalized = normalizeRational(num, den);
+  return normalized.head === "Rational" && normalized.attributes.den === 1n
+    ? int(normalized.attributes.num)
+    : normalized;
+};
+
+const isZero = (expr: Expr): boolean =>
+  expr.head === "Integer" && expr.attributes.value === 0n;
+
+const isOne = (expr: Expr): boolean =>
+  expr.head === "Integer" && expr.attributes.value === 1n;
 
 const sym = (name: string): Expr => ({ head: "Symbol", attributes: { name } });
 
