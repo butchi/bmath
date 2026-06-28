@@ -2,15 +2,15 @@
 
 ## コマンド・ページインターフェース
 
-bmathは、TeX数式処理を行うためのCLIツールとWebUIを提供します。
+bmathは、Matra数式処理を行うためのCLIツールとWebUIを提供します。CLIの標準入力形式はMatra文法です。
 
 ### CLI使用方法
 
 #### 基本的な使い方
 
 ```bash
-npm run cli -- "2x + 1"
-# Output: 2 x + 1
+npm run cli -- 'Add(1, 2, 3)'
+# Output: 6
 ```
 
 #### オプション
@@ -21,39 +21,56 @@ npm run cli -- "2x + 1"
 - `consistent`: 一貫した表記（cdot を使用）
 
 ```bash
-npm run cli -- "2x" --mode consistent
+npm run cli -- 'Times(Integer(value="2"), Symbol(name="x"))' --mode consistent
 # Output: 2 \cdot x
 ```
 
 **`--output`**: 出力形式
 
-- `tex` (デフォルト): TeX形式
+- `result` (デフォルト): MathJSONとして解釈し、Compute Engineで評価した結果
+- `mathjson`: Matraから変換したMathJSON
+- `tex`: TeX形式
 - `expr`: Expr表現（数式オブジェクト）
 - `formula`: Formula形式（JSON）
 - `morphion`: Morphion形式（JSON）
 
 ```bash
-npm run cli -- "\sin(x)" --output expr
+npm run cli -- 'Add(1, 2, 3)' --output mathjson
+# Output: ["Add",1,2,3]
+
+npm run cli -- 'Add(1, 2, 3)'
+# Output: 6
+
+npm run cli -- 'Call(Symbol(name="sin"), Symbol(name="x"))' --output expr
 # Output: sin(x)
 
-npm run cli -- "x^2" --output formula
+npm run cli -- 'Power(Symbol(name="x"), Integer(value="2"))' --output formula
 # Output: 詳細なJSON形式の数式構造
+```
+
+**`--input`**: 入力形式
+
+- `matra` (デフォルト): Matra文法
+- `tex`: TeX形式（従来形式）
+
+```bash
+npm run cli -- "x^2 + 1" --input tex
 ```
 
 #### 使用例
 
 ```bash
 # TeX式の正規化
-npm run cli -- "x + 1"
+npm run cli -- 'Plus(Symbol(name="x"), Integer(value="1"))'
 
 # 累乗式
-npm run cli -- "x^2 + y^2" --mode consistent
+npm run cli -- 'Plus(Power(Symbol(name="x"), Integer(value="2")), Power(Symbol(name="y"), Integer(value="2")))' --mode consistent
 
 # 分数
-npm run cli -- "\frac{1}{2}"
+npm run cli -- 'Times(Integer(value="1"), Power(Integer(value="2"), Integer(value="-1")))'
 
 # 三角関数
-npm run cli -- "\sin(x)" --output expr
+npm run cli -- 'Call(Symbol(name="sin"), Symbol(name="x"))' --output expr
 
 # ヘルプ表示
 npm run cli -- --help

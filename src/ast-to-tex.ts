@@ -11,6 +11,19 @@ function astToMathJson(node: MatraNode): MathJson {
   const expressions = () => children.map((child) => astToMathJson(child as MatraNode))
 
   switch (node.head) {
+    case "Formula":
+      if (children.length !== 1) throw new Error("Formula must contain exactly one expression")
+      return astToMathJson(children[0] as MatraNode)
+    case "Integer":
+      return { num: String(node.attributes.value) }
+    case "Symbol":
+      return String(node.attributes.name)
+    case "Plus":
+      return ["Add", ...expressions()]
+    case "Times":
+      return ["Multiply", ...expressions()]
+    case "Power":
+      return ["Power", ...expressions()]
     case "Const": {
       const value = String(children[0])
       if (value === "Pi") return "Pi"
@@ -32,10 +45,11 @@ function astToMathJson(node: MatraNode): MathJson {
       return [node.head, ...expressions()]
     case "Call": {
       const fn = children[0] as MatraNode
-      if (fn.head !== "Var" || typeof fn.children[0] !== "string") {
-        throw new Error("Call function must be a Var node")
+      const functionName = fn.head === "Var" ? fn.children[0] : fn.attributes.name
+      if ((fn.head !== "Var" && fn.head !== "Symbol") || typeof functionName !== "string") {
+        throw new Error("Call function must be a Var or Symbol node")
       }
-      return [fn.children[0], ...children.slice(1).map((child) => astToMathJson(child as MatraNode))]
+      return [functionName, ...children.slice(1).map((child) => astToMathJson(child as MatraNode))]
     }
     default:
       throw new Error(`Unknown Matra head: ${node.head}`)
