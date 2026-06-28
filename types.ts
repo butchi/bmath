@@ -1,3 +1,5 @@
+type MatraNode = { head: string; attributes: Record<string, any>; children: (MatraNode | string)[] }
+
 // 第1層: 一般式
 type Expr =
   | { head: "Integer"; attributes: { value: bigint } }
@@ -22,4 +24,4 @@ type MorphionForm = {
   };
 };
 
-export type { Expr, MorphionForm };
+export type { MatraNode, Expr, MorphionForm };

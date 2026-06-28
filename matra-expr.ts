@@ -7,9 +7,9 @@ import { int, plus, power, sym, times, call } from "./expr"
 import { toMorphionForm } from "./utils"
 import { parse as parseMatra } from "./matra-parser.mjs"
 
-type ExprMatraTag = "Integer" | "Symbol" | "Plus" | "Times" | "Power" | "Call"
-type ExprMatraNode = [ExprMatraTag, Record<string, any>, ExprMatraNode[]]
-type FormulaNode = ["Formula", Record<string, any>, [ExprMatraNode]]
+type ExprMatraHead = "Integer" | "Symbol" | "Plus" | "Times" | "Power" | "Call"
+type ExprMatraNode = { head: ExprMatraHead, attributes: Record<string, any>, children: ExprMatraNode[] }
+type FormulaNode = { head: "Formula", attributes: Record<string, any>, children: [ExprMatraNode] }
 type ParsedMatraNode = {
   head: string
   attributes: Record<string, unknown>
@@ -47,11 +47,14 @@ function parsedMatraNodeToExpr(node: ParsedMatraNode): Expr {
       return power(base, exponent)
     }
     case "Call": {
-      const [argument, ...rest] = children()
-      if (!argument || rest.length > 0 || typeof node.attributes.fn !== "string") {
-        throw new Error("Invalid Call node: fn and one argument are required")
+      if (Object.keys(node.attributes).length > 0 || node.children.length !== 2) {
+        throw new Error("Invalid Call node: function and argument must be children")
       }
-      return call(node.attributes.fn, argument)
+      const fn = asParsedNode(node.children[0])
+      if (fn.head !== "Symbol" || typeof fn.attributes.name !== "string") {
+        throw new Error("Call function must be a Symbol node")
+      }
+      return call(fn.attributes.name, parsedMatraNodeToExpr(asParsedNode(node.children[1])))
     }
     default:
       throw new Error(`Unsupported parsed Matra head: ${node.head}`)
@@ -71,122 +74,129 @@ function parseMatraFormula(source: string): Expr {
 }
 
 function isExprMatraNode(node: MatraNode): node is ExprMatraNode {
-  return node[0] === "Integer" || node[0] === "Symbol" || node[0] === "Plus" || node[0] === "Times" || node[0] === "Power" || node[0] === "Call"
+  return node.head === "Integer" || node.head === "Symbol" || node.head === "Plus" || node.head === "Times" || node.head === "Power" || node.head === "Call"
 }
 
 function exprToMatraExprNode(expr: Expr): ExprMatraNode {
   if (expr.head === "Integer") {
-    return ["Integer", { value: expr.attributes.value.toString() }, []]
+    return { head: "Integer", attributes: { value: expr.attributes.value.toString() }, children: [] }
   }
 
   if (expr.head === "Symbol") {
-    return ["Symbol", { name: expr.attributes.name }, []]
+    return { head: "Symbol", attributes: { name: expr.attributes.name }, children: [] }
   }
 
   if (expr.head === "Plus") {
-    return ["Plus", {}, expr.attributes.terms.map(exprToMatraExprNode)]
+    return { head: "Plus", attributes: {}, children: expr.attributes.terms.map(exprToMatraExprNode) }
   }
 
   if (expr.head === "Times") {
-    return ["Times", {}, expr.attributes.factors.map(exprToMatraExprNode)]
+    return { head: "Times", attributes: {}, children: expr.attributes.factors.map(exprToMatraExprNode) }
   }
 
   if (expr.head === "Power") {
-    return ["Power", {}, [exprToMatraExprNode(expr.attributes.base), exprToMatraExprNode(expr.attributes.exp)]]
+    return { head: "Power", attributes: {}, children: [exprToMatraExprNode(expr.attributes.base), exprToMatraExprNode(expr.attributes.exp)] }
   }
 
   if (expr.head === "Call") {
-    return ["Call", {}, [["Symbol", { name: expr.attributes.fn }, []], exprToMatraExprNode(expr.attributes.arg)]]
+    return {
+      head: "Call",
+      attributes: {},
+      children: [
+        { head: "Symbol", attributes: { name: expr.attributes.fn }, children: [] },
+        exprToMatraExprNode(expr.attributes.arg),
+      ],
+    }
   }
 
   throw new Error(`Unsupported Expr head for Matra conversion: ${expr.head}`)
 }
 
 function matraExprNodeToExpr(node: ExprMatraNode): Expr {
-  const [tag, props, body] = node
+  const { head, attributes, children } = node
 
-  if (tag === "Integer") {
-    if (typeof props.value !== "string") {
-      throw new Error("Invalid Integer node: props.value must be string")
+  if (head === "Integer") {
+    if (typeof attributes.value !== "string") {
+      throw new Error("Invalid Integer node: attributes.value must be string")
     }
-    return { head: "Integer", attributes: { value: BigInt(props.value) } }
+    return { head: "Integer", attributes: { value: BigInt(attributes.value) } }
   }
 
-  if (tag === "Symbol") {
-    if (typeof props.name !== "string") {
-      throw new Error("Invalid Symbol node: props.name must be string")
+  if (head === "Symbol") {
+    if (typeof attributes.name !== "string") {
+      throw new Error("Invalid Symbol node: attributes.name must be string")
     }
-    return { head: "Symbol", attributes: { name: props.name } }
+    return { head: "Symbol", attributes: { name: attributes.name } }
   }
 
-  if (tag === "Plus") {
-    return { head: "Plus", attributes: { terms: body.map(matraExprNodeToExpr) } }
+  if (head === "Plus") {
+    return { head: "Plus", attributes: { terms: children.map(matraExprNodeToExpr) } }
   }
 
-  if (tag === "Times") {
-    return { head: "Times", attributes: { factors: body.map(matraExprNodeToExpr) } }
+  if (head === "Times") {
+    return { head: "Times", attributes: { factors: children.map(matraExprNodeToExpr) } }
   }
 
-  if (tag === "Power") {
-    if (body.length !== 2) {
-      throw new Error("Invalid Power node: body length must be 2")
+  if (head === "Power") {
+    if (children.length !== 2) {
+      throw new Error("Invalid Power node: children length must be 2")
     }
     return {
       head: "Power",
       attributes: {
-        base: matraExprNodeToExpr(body[0]),
-        exp: matraExprNodeToExpr(body[1]),
+        base: matraExprNodeToExpr(children[0]),
+        exp: matraExprNodeToExpr(children[1]),
       },
     }
   }
 
-  if (tag === "Call") {
-    if (body.length !== 2) {
-      throw new Error("Invalid Call node: body length must be 2")
+  if (head === "Call") {
+    if (children.length !== 2) {
+      throw new Error("Invalid Call node: children length must be 2")
     }
-    const fnNode = body[0]
-    if (fnNode[0] !== "Symbol") {
+    const fnNode = children[0]
+    if (fnNode.head !== "Symbol") {
       throw new Error("Call function must be a Symbol node")
     }
     return {
       head: "Call",
       attributes: {
-        fn: String((fnNode as any)[1].name),
-        arg: matraExprNodeToExpr(body[1]),
+        fn: String((fnNode as any).attributes.name),
+        arg: matraExprNodeToExpr(children[1]),
       },
     }
   }
 
-  throw new Error(`Unsupported Matra tag for Expr conversion: ${tag}`)
+  throw new Error(`Unsupported Matra tag for Expr conversion: ${head}`)
 }
 
 function exprToFormulaNode(expr: Expr): FormulaNode {
-  return ["Formula", {}, [exprToMatraExprNode(expr)]]
+  return { head: "Formula", attributes: {}, children: [exprToMatraExprNode(expr)] }
 }
 
 function toFormulaNode(node: MatraNode): FormulaNode {
-  if (node[0] === "Formula") {
-    const body = node[2]
-    if (!Array.isArray(body) || body.length !== 1) {
-      throw new Error("Invalid Formula node: body length must be 1")
+  if (node.head === "Formula") {
+    const { children } = node
+    if (!Array.isArray(children) || children.length !== 1) {
+      throw new Error("Invalid Formula node: children length must be 1")
     }
-    const exprNode = body[0]
-    if (!Array.isArray(exprNode) || !isExprMatraNode(exprNode as MatraNode)) {
-      throw new Error("Invalid Formula node: body[0] must be Expr Matra node")
+    const exprNode = children[0]
+    if (!isExprMatraNode(exprNode as MatraNode)) {
+      throw new Error("Invalid Formula node: children[0] must be Expr Matra node")
     }
     return node as FormulaNode
   }
 
   if (isExprMatraNode(node)) {
-    return ["Formula", {}, [node]]
+    return { head: "Formula", attributes: {}, children: [node] }
   }
 
-  throw new Error(`Unsupported node for formula conversion: ${node[0]}`)
+  throw new Error(`Unsupported node for formula conversion: ${node.head}`)
 }
 
 function formulaNodeToExpr(node: MatraNode): Expr {
   const formula = toFormulaNode(node)
-  return matraExprNodeToExpr(formula[2][0])
+  return matraExprNodeToExpr(formula.children[0])
 }
 
 function parseFormula(node: MatraNode | string): Expr {
@@ -194,10 +204,10 @@ function parseFormula(node: MatraNode | string): Expr {
 }
 
 function texMathNodeToExpr(node: MatraNode): Expr {
-  const [tag, _props, body] = node
+  const { head, children } = node
 
-  if (tag === "Const") {
-    const val = String(body[0])
+  if (head === "Const") {
+    const val = String(children[0])
     if (/^-?\d+$/.test(val)) {
       return int(BigInt(val))
     }
@@ -210,54 +220,54 @@ function texMathNodeToExpr(node: MatraNode): Expr {
     throw new Error(`Unsupported Const value for Expr conversion: ${val}`)
   }
 
-  if (tag === "Var") {
-    return sym(String(body[0]))
+  if (head === "Var") {
+    return sym(String(children[0]))
   }
 
-  if (tag === "Add") {
-    return plus(...(body as MatraNode[]).map(texMathNodeToExpr))
+  if (head === "Add") {
+    return plus(...(children as MatraNode[]).map(texMathNodeToExpr))
   }
 
-  if (tag === "Mul") {
-    return times(...(body as MatraNode[]).map(texMathNodeToExpr))
+  if (head === "Mul") {
+    return times(...(children as MatraNode[]).map(texMathNodeToExpr))
   }
 
-  if (tag === "Pow") {
-    if (body.length !== 2) {
-      throw new Error("Invalid Pow node: body length must be 2")
+  if (head === "Pow") {
+    if (children.length !== 2) {
+      throw new Error("Invalid Pow node: children length must be 2")
     }
-    return power(texMathNodeToExpr(body[0] as MatraNode), texMathNodeToExpr(body[1] as MatraNode))
+    return power(texMathNodeToExpr(children[0] as MatraNode), texMathNodeToExpr(children[1] as MatraNode))
   }
 
-  if (tag === "Div") {
-    if (body.length !== 2) {
-      throw new Error("Invalid Div node: body length must be 2")
+  if (head === "Div") {
+    if (children.length !== 2) {
+      throw new Error("Invalid Div node: children length must be 2")
     }
     return times(
-      texMathNodeToExpr(body[0] as MatraNode),
-      power(texMathNodeToExpr(body[1] as MatraNode), int(-1n)),
+      texMathNodeToExpr(children[0] as MatraNode),
+      power(texMathNodeToExpr(children[1] as MatraNode), int(-1n)),
     )
   }
 
-  if (tag === "Sin" || tag === "Cos") {
-    if (body.length !== 1) {
-      throw new Error(`Invalid ${tag} node: body length must be 1`)
+  if (head === "Sin" || head === "Cos") {
+    if (children.length !== 1) {
+      throw new Error(`Invalid ${head} node: children length must be 1`)
     }
-    return call(tag.toLowerCase(), texMathNodeToExpr(body[0] as MatraNode))
+    return call(head.toLowerCase(), texMathNodeToExpr(children[0] as MatraNode))
   }
 
-  if (tag === "Call") {
-    if (body.length !== 2) {
-      throw new Error("Invalid Call node: body length must be 2")
+  if (head === "Call") {
+    if (children.length !== 2) {
+      throw new Error("Invalid Call node: children length must be 2")
     }
-    const fn = body[0] as MatraNode
-    if (fn[0] !== "Var") {
+    const fn = children[0] as MatraNode
+    if (fn.head !== "Var") {
       throw new Error("Call function must be a Var node")
     }
-    return call(String(fn[2][0]), texMathNodeToExpr(body[1] as MatraNode))
+    return call(String(fn.children[0]), texMathNodeToExpr(children[1] as MatraNode))
   }
 
-  throw new Error(`Unsupported TeX math node for Expr conversion: ${tag}`)
+  throw new Error(`Unsupported TeX math node for Expr conversion: ${head}`)
 }
 
 function texToExpr(tex: string): Expr {

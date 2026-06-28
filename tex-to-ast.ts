@@ -1,4 +1,4 @@
-import type { MatraNode } from "./ast-to-tex"
+import type { MatraNode } from "./types"
 
 type TokenHead = "number" | "ident" | "command" | "symbol" | "eof"
 type Token = { head: TokenHead; attributes: { value: string } }
@@ -59,21 +59,21 @@ class Tokenizer {
 }
 
 function constNode(v: string): MatraNode {
-  return ["Const", {}, [v]]
+  return { head: "Const", attributes: {}, children: [v] }
 }
 
 function varNode(v: string): MatraNode {
-  return ["Var", {}, [v]]
+  return { head: "Var", attributes: {}, children: [v] }
 }
 
 function addNode(terms: MatraNode[]): MatraNode {
   if (terms.length === 1) return terms[0]
-  return ["Add", {}, terms]
+  return { head: "Add", attributes: {}, children: terms }
 }
 
 function mulNode(factors: MatraNode[]): MatraNode {
   if (factors.length === 1) return factors[0]
-  return ["Mul", {}, factors]
+  return { head: "Mul", attributes: {}, children: factors }
 }
 
 function texToAst(input: string): MatraNode {
@@ -156,7 +156,7 @@ function texToAst(input: string): MatraNode {
         exp = parsePrimary()
       }
 
-      left = ["Pow", {}, [left, exp]]
+      left = { head: "Pow", attributes: {}, children: [left, exp] }
     }
 
     return left
@@ -189,7 +189,7 @@ function texToAst(input: string): MatraNode {
 
       if (name !== "e" && matchSymbol("(")) {
         const arg = parseGroup("(")
-        return ["Call", {}, [varNode(name), arg]]
+        return { head: "Call", attributes: {}, children: [varNode(name), arg] }
       }
 
       return base
@@ -205,15 +205,15 @@ function texToAst(input: string): MatraNode {
       if (cmd === "frac") {
         const num = parseGroup("{")
         const den = parseGroup("{")
-        return ["Div", {}, [num, den]]
+        return { head: "Div", attributes: {}, children: [num, den] }
       }
 
       if (cmd === "sin") {
-        return ["Sin", {}, [parseFunctionArg()]]
+        return { head: "Sin", attributes: {}, children: [parseFunctionArg()] }
       }
 
       if (cmd === "cos") {
-        return ["Cos", {}, [parseFunctionArg()]]
+        return { head: "Cos", attributes: {}, children: [parseFunctionArg()] }
       }
 
       throw new Error(`Unsupported command: ${cmd}`)

@@ -1,12 +1,12 @@
-type MatraNode = [string, Record<string, any>, (MatraNode | string)[]]
+import type { MatraNode } from "./types"
 
 type Mode = "consistent" | "conventional"
 
 function astToTeX(node: MatraNode, mode: Mode = "conventional"): string {
-  const [tag, _props, body] = node
-  const children = (Array.isArray(body) ? body : []) as (MatraNode | string)[]
+  const { head, children: _children } = node
+  const children = (Array.isArray(_children) ? _children : []) as (MatraNode | string)[]
 
-  switch (tag) {
+  switch (head) {
     case "Const": {
       const val = String(children[0])
       if (val === "Pi") return "\\pi"
@@ -48,7 +48,7 @@ function astToTeX(node: MatraNode, mode: Mode = "conventional"): string {
     }
 
     default:
-      throw new Error(`Unknown tag: ${tag}`)
+      throw new Error(`Unknown tag: ${head}`)
   }
 }
 
