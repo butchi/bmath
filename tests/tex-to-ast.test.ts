@@ -1,5 +1,4 @@
 /// <reference types="jest" />
-import { MatraNode } from "../src/types"
 import { texToAst } from "../src/tex-to-ast"
 
 describe("texToAst", () => {

@@ -2,7 +2,7 @@
 
 /// <reference types="node" />
 
-import { texToExpr, texToFormulaNode, texToMorphion, processMatrixTeX, processBatchTeX } from "./index"
+import { texToExpr, texToFormulaNode, texToMorphion, processMatrixTeX } from "./index"
 import { toExpression } from "./utils"
 
 const args = process.argv.slice(2)

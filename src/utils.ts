@@ -1,6 +1,6 @@
 import { Expr, MorphionForm, PolynarionForm } from "./types";
 import { replacer } from "./json";
-import { int, sym, plus, times } from "./expr";
+import { int, sym } from "./expr";
 import { normalizeRational } from "./expr";
 import { morphion } from "./morphion";
 import { exactAxisUnitMagnitudePower, exactRealRationalPower, exactUnitRootPower, powComplexInteger } from "./exact-complex";

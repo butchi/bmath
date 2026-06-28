@@ -1,37 +1,10 @@
 import { Expr } from "./types";
-import { exprToComplexFraction as evalExprToComplexFraction, exprToFraction } from "./exact-expression";
+import { exprToFraction } from "./exact-expression";
 import { absBigInt, exactNthRoot, intOrRatParts, powRationalByInteger } from "./exact-fraction";
-import { exactAxisUnitMagnitudePower, exactAxisUnitMagnitudePowerAsFraction, exactUnitRootPower } from "./axis-power";
-import type { ComplexRational, RationalParts } from "./exact-fraction";
+import { exactAxisUnitMagnitudePower, exactUnitRootPower } from "./axis-power";
+import type { RationalParts } from "./exact-fraction";
 
 type ComplexNumber = { re: number; im: number };
-
-function exprToComplexFraction(e: Expr): ComplexRational | null {
-  return evalExprToComplexFraction(e, exactAxisUnitMagnitudePowerAsFraction);
-}
-
-function exactPositiveRationalPower(base: RationalParts, expExpr: Expr): RationalParts | null {
-  if (base.num < 0n || base.den <= 0n) {
-    return null;
-  }
-
-  const exp = exprToFraction(expExpr);
-  if (!exp) {
-    return null;
-  }
-
-  if (exp.den <= 0n) {
-    return null;
-  }
-
-  const rootNum = exactNthRoot(base.num, exp.den);
-  const rootDen = exactNthRoot(base.den, exp.den);
-  if (rootNum === null || rootDen === null) {
-    return null;
-  }
-
-  return powRationalByInteger({ num: rootNum, den: rootDen }, exp.num);
-}
 
 function exactRealRationalPower(baseExpr: Expr, expExpr: Expr): ComplexNumber | null {
   const base = intOrRatParts(baseExpr);
