@@ -24,6 +24,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@cortex-js/compute-engine": "^0.64.0",
     "@types/jest": "^30.0.0",
     "jest": "^30.4.2",
     "peggy": "^5.1.0",
