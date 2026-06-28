@@ -10,6 +10,8 @@ export {
 	formulaNodeToExpr,
 	toFormulaNode,
 	parseFormula,
+	parseMatraExpr,
+	parseMatraFormula,
 	exprToMorphion,
 	formulaNodeToMorphion,
 	texMathNodeToExpr,

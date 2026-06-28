@@ -5,10 +5,70 @@ import { astToTeX } from "./ast-to-tex"
 import { texToAst } from "./tex-to-ast"
 import { int, plus, power, sym, times, call } from "./expr"
 import { toMorphionForm } from "./utils"
+import { parse as parseMatra } from "./matra-parser.mjs"
 
 type ExprMatraTag = "Integer" | "Symbol" | "Plus" | "Times" | "Power" | "Call"
 type ExprMatraNode = [ExprMatraTag, Record<string, any>, ExprMatraNode[]]
 type FormulaNode = ["Formula", Record<string, any>, [ExprMatraNode]]
+type ParsedMatraNode = {
+  head: string
+  attributes: Record<string, unknown>
+  children: Array<ParsedMatraNode | string | number | boolean>
+}
+
+function asParsedNode(value: unknown): ParsedMatraNode {
+  if (
+    typeof value !== "object" || value === null ||
+    !("head" in value) || !("attributes" in value) || !("children" in value)
+  ) {
+    throw new Error("Matra expression must produce a node")
+  }
+  return value as ParsedMatraNode
+}
+
+function parsedMatraNodeToExpr(node: ParsedMatraNode): Expr {
+  const children = () => node.children.map((child) =>
+    parsedMatraNodeToExpr(asParsedNode(child)))
+
+  switch (node.head) {
+    case "Integer":
+      return int(BigInt(String(node.attributes.value)))
+    case "Symbol":
+      return sym(String(node.attributes.name))
+    case "Plus":
+      return plus(...children())
+    case "Times":
+      return times(...children())
+    case "Power": {
+      const [base, exponent, ...rest] = children()
+      if (!base || !exponent || rest.length > 0) {
+        throw new Error("Invalid Power node: children length must be 2")
+      }
+      return power(base, exponent)
+    }
+    case "Call": {
+      const [argument, ...rest] = children()
+      if (!argument || rest.length > 0 || typeof node.attributes.fn !== "string") {
+        throw new Error("Invalid Call node: fn and one argument are required")
+      }
+      return call(node.attributes.fn, argument)
+    }
+    default:
+      throw new Error(`Unsupported parsed Matra head: ${node.head}`)
+  }
+}
+
+function parseMatraExpr(source: string): Expr {
+  return parsedMatraNodeToExpr(asParsedNode(parseMatra(source)))
+}
+
+function parseMatraFormula(source: string): Expr {
+  const formula = asParsedNode(parseMatra(source))
+  if (formula.head !== "Formula" || formula.children.length !== 1) {
+    throw new Error("Matra formula must contain exactly one expression")
+  }
+  return parsedMatraNodeToExpr(asParsedNode(formula.children[0]))
+}
 
 function isExprMatraNode(node: MatraNode): node is ExprMatraNode {
   return node[0] === "Integer" || node[0] === "Symbol" || node[0] === "Plus" || node[0] === "Times" || node[0] === "Power" || node[0] === "Call"
@@ -129,8 +189,8 @@ function formulaNodeToExpr(node: MatraNode): Expr {
   return matraExprNodeToExpr(formula[2][0])
 }
 
-function parseFormula(node: MatraNode): Expr {
-  return formulaNodeToExpr(node)
+function parseFormula(node: MatraNode | string): Expr {
+  return typeof node === "string" ? parseMatraFormula(node) : formulaNodeToExpr(node)
 }
 
 function texMathNodeToExpr(node: MatraNode): Expr {
@@ -243,6 +303,8 @@ export {
   formulaNodeToExpr,
   toFormulaNode,
   parseFormula,
+  parseMatraExpr,
+  parseMatraFormula,
   texMathNodeToExpr,
   texToExpr,
   texToFormulaNode,

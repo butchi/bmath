@@ -8,6 +8,8 @@ import {
   formulaNodeToMorphion,
   matraExprNodeToExpr,
   parseFormula,
+  parseMatraExpr,
+  parseMatraFormula,
   texMathNodeToExpr,
   texToExpr,
   texToFormulaNode,
@@ -79,9 +81,15 @@ describe("matra-expr bridge", () => {
     expect(toFormulaNode(node)).toEqual(["Formula", {}, [["Integer", { value: "7" }, []]]])
   })
 
-  test("parseFormula is alias of Formula -> Expr", () => {
-    const formula = ["Formula", {}, [["Power", {}, [["Symbol", { name: "x" }, []], ["Integer", { value: "2" }, []]]]]] as any
-    expect(parseFormula(formula)).toEqual(power(sym("x"), int(2n)))
+  test("Matra parser -> Expr", () => {
+    expect(parseMatraExpr('Plus(Integer(value="1"), Symbol(name="x"))'))
+      .toEqual(plus(int(1n), sym("x")))
+  })
+
+  test("Matra parser -> Formula -> Expr", () => {
+    const source = 'Formula(Power(Symbol(name="x"), Integer(value="2")))'
+    expect(parseMatraFormula(source)).toEqual(power(sym("x"), int(2n)))
+    expect(parseFormula(source)).toEqual(power(sym("x"), int(2n)))
   })
 
   test("FormulaNode -> MorphionForm", () => {
@@ -213,4 +221,3 @@ describe("TeX I/O mock processing", () => {
     expect(result).toBe("\\pi")
   })
 })
-

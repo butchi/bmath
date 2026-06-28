@@ -2,6 +2,7 @@
 //
 // https://peggyjs.org/
 
+"use strict";
 
 
   function toMatrast(head, attributes = {}, children = []) {
@@ -1459,12 +1460,8 @@ function peg$parse(input, options) {
   }
 }
 
-const peg$allowedStartRules = [
-  "Matra"
-];
-
-export {
-  peg$allowedStartRules as StartRules,
-  peg$SyntaxError as SyntaxError,
-  peg$parse as parse
+module.exports = {
+  StartRules: ["Matra"],
+  SyntaxError: peg$SyntaxError,
+  parse: peg$parse,
 };

@@ -4,14 +4,8 @@
 // Accepts expressions like `f(a=5, b=3, 8)` and computes their value.
 
 {{
-  type Matrast = {
-    head: string,
-    attributes: { [key: string]: any },
-    children: (Matrast | number)[]
-  }
-
-  function toMatrast (head: string, attributes: { [key: string]: any } = {}, children: (Matrast | number)[] = []) {
-    return { head, attributes, children}
+  function toMatrast(head, attributes = {}, children = []) {
+    return { head, attributes, children }
   }
 }}
 
