@@ -1,6 +1,6 @@
 /// <reference types="jest" />
-import { int, plus, power, sym, times, call } from "./expr"
-import { toExpression } from "./utils"
+import { int, plus, power, sym, times, call } from "../src/expr"
+import { toExpression } from "../src/utils"
 import {
   exprToFormulaNode,
   exprToMatraExprNode,
@@ -17,7 +17,7 @@ import {
   toFormulaNode,
   processMatrixTeX,
   processBatchTeX,
-} from "./matra-expr"
+} from "../src/matra-expr"
 
 describe("matra-expr bridge", () => {
   test("Expr -> ExprMatraNode", () => {

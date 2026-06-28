@@ -1,7 +1,7 @@
 /// <reference types="jest" />
-import { morphion, poly, addMorphionForms, mulMorphionForms } from "./morphion";
-import { int, sym, rat, power, complex, plus, times } from "./expr";
-import { toJson, toNum, toExpression, toComplex, toMorphionForm } from "./utils";
+import { morphion, poly, addMorphionForms, mulMorphionForms } from "../src/morphion";
+import { int, sym, rat, power, complex, plus, times } from "../src/expr";
+import { toJson, toNum, toExpression, toComplex, toMorphionForm } from "../src/utils";
 
 describe("utility functions", () => {
   describe("numeric basics", () => {

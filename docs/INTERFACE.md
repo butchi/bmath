@@ -61,7 +61,7 @@ npm run cli -- --help
 
 ### Webページ
 
-`index.html`をブラウザで開くと、Web UIでTeX数式を対話的に処理できます。
+`examples/index.html`をブラウザで開くと、Web UIでTeX数式を対話的に処理できます。
 
 #### 機能
 

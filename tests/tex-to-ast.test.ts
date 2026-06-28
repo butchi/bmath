@@ -1,6 +1,6 @@
 /// <reference types="jest" />
-import { MatraNode } from "./types"
-import { texToAst } from "./tex-to-ast"
+import { MatraNode } from "../src/types"
+import { texToAst } from "../src/tex-to-ast"
 
 describe("texToAst", () => {
   test("Const: Pi, E, 数字", () => {
